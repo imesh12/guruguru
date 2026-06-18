@@ -1,0 +1,29 @@
+logLevel: info
+logDestinations: [stdout]
+
+rtsp: yes
+rtspAddress: 127.0.0.1:8554
+webrtc: yes
+webrtcAddress: 127.0.0.1:8889
+webrtcAdditionalHosts: [127.0.0.1, localhost]
+webrtcIPsFromInterfaces: no
+hls: yes
+hlsAddress: 127.0.0.1:8888
+api: yes
+apiAddress: 127.0.0.1:9997
+
+pathDefaults:
+  rtspTransport: tcp
+  sourceOnDemand: yes
+  sourceOnDemandStartTimeout: 10s
+  sourceOnDemandCloseAfter: 10s
+
+paths:
+  camera-b6c0cd4c-a9e2-4056-9372-498f0d624523:
+    source: 'rtsp://root:Cw8839629@192.168.1.190:554/axis-media/media.amp?videocodec=h264&resolution=1280x720&fps=15&compression=30'
+  camera-ba34289f-8907-4738-85d8-74176968ec28:
+    source: 'rtsp://root:Cw8839629@120.51.223.85:5542/axis-media/media.amp?videocodec=h264&resolution=640x360&fps=8&compression=45'
+  camera-ed98a31f-72e7-4144-a2c9-d389aaad0be4:
+    source: 'rtsp://root:Cw8839629@219.112.88.192:5541/axis-media/media.amp?videocodec=h264&resolution=640x360&fps=8&compression=45'
+  camera-fc8d182c-3b4e-4ab6-9283-d985c4549e96:
+    source: 'rtsp://root:Cw8839629@219.112.88.192:5542/axis-media/media.amp?videocodec=h264&resolution=640x360&fps=8&compression=45'

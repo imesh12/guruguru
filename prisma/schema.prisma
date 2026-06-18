@@ -1,0 +1,176 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum CameraType {
+  FRONT
+  INTERNAL
+}
+
+enum CameraVendor {
+  AXIS
+  HIKVISION
+  CUSTOM
+}
+
+enum CameraQualityPreset {
+  LOW
+  STANDARD
+  HIGH
+}
+
+enum EventLevel {
+  INFO
+  WARNING
+  ERROR
+}
+
+enum FieldTestSessionStatus {
+  RUNNING
+  PASSED
+  FAILED
+}
+
+enum FieldTestItemStatus {
+  PENDING
+  PASSED
+  FAILED
+}
+
+model Vehicle {
+  id           String      @id @default(cuid())
+  name         String
+  displayColor String
+  enabled      Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  cameras      Camera[]
+  gpsPoints    GpsPoint[]
+  routePoints  VehicleRoutePoint[]
+}
+
+model Camera {
+  id                String       @id
+  vehicleId         String
+  name              String
+  type              CameraType
+  vendor            CameraVendor @default(CUSTOM)
+  host              String?
+  rtspPort          Int?
+  customRtspUrl     String?
+  qualityPreset     CameraQualityPreset @default(STANDARD)
+  rtspUrl           String?
+  username          String?
+  password          String?
+  bitrateLimit      Int?
+  enabled           Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  vehicle           Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  layoutSlots       LayoutSlot[]
+
+  @@index([vehicleId])
+}
+
+model LayoutConfig {
+  id        String       @id @default(cuid())
+  name      String
+  active    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  slots     LayoutSlot[]
+}
+
+model LayoutSlot {
+  id             String       @id @default(cuid())
+  layoutConfigId String
+  slotIndex      Int
+  cameraId       String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  layoutConfig   LayoutConfig @relation(fields: [layoutConfigId], references: [id], onDelete: Cascade)
+  camera         Camera?      @relation(fields: [cameraId], references: [id], onDelete: SetNull)
+
+  @@unique([layoutConfigId, slotIndex])
+  @@index([cameraId])
+}
+
+model GpsPoint {
+  id         String   @id @default(cuid())
+  vehicleId  String
+  lat        Float
+  lng        Float
+  speed      Float?
+  heading    Float?
+  receivedAt DateTime
+  createdAt  DateTime @default(now())
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, receivedAt])
+}
+
+model VehicleRoutePoint {
+  id         String   @id @default(cuid())
+  vehicleId  String
+  routeId    String?
+  latitude   Float
+  longitude  Float
+  gnssTime   DateTime?
+  receivedAt DateTime
+  dateKey    String
+  weekKey    String
+  source     String
+  status     String
+  rawJson    String?
+  createdAt  DateTime @default(now())
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, dateKey, receivedAt])
+  @@index([dateKey, receivedAt])
+  @@index([weekKey])
+  @@index([vehicleId, weekKey])
+  @@index([receivedAt])
+}
+
+model SystemEvent {
+  id        String     @id @default(cuid())
+  level     EventLevel
+  type      String
+  message   String
+  createdAt DateTime   @default(now())
+}
+
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model FieldTestSession {
+  id           String                 @id @default(cuid())
+  startedAt    DateTime               @default(now())
+  endedAt      DateTime?
+  operatorName String
+  notes        String?
+  status       FieldTestSessionStatus @default(RUNNING)
+  items        FieldTestItem[]
+}
+
+model FieldTestItem {
+  id        String              @id @default(cuid())
+  sessionId String
+  category  String
+  label     String
+  status    FieldTestItemStatus @default(PENDING)
+  notes     String?
+  checkedAt DateTime?
+  session   FieldTestSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}

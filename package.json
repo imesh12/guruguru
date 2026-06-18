@@ -1,0 +1,51 @@
+{
+  "name": "kurukuru-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.1.1",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:desktop": "pnpm --filter @kurukuru-monitor/desktop dev",
+    "dev:api": "pnpm --filter @kurukuru-monitor/api dev",
+    "start:api": "pnpm --filter @kurukuru-monitor/api start",
+    "start:desktop": "pnpm --filter @kurukuru-monitor/desktop start",
+    "gps:mock": "pnpm --filter @kurukuru-monitor/api gps:mock",
+    "gps:nmea-test": "pnpm --filter @kurukuru-monitor/api gps:nmea-test",
+    "build": "pnpm -r build",
+    "build:release": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "prisma:generate": "prisma generate --schema ./prisma/schema.prisma",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:push": "prisma db push --schema ./prisma/schema.prisma",
+    "db:seed": "node ./prisma/seed.mjs",
+    "maintenance:prune-orphans": "node ./scripts/maintenance-prune-orphans.mjs",
+    "db:vacuum": "bash ./scripts/vacuum-db.sh",
+    "deploy:check": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/check-system.ps1",
+    "deploy:start-api": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-api.ps1",
+    "deploy:start-desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-desktop.ps1",
+    "deploy:install-tasks": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-windows-tasks.ps1",
+    "deploy:uninstall-tasks": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/uninstall-windows-tasks.ps1"
+  },
+  "devDependencies": {
+    "@types/google.maps": "^3.65.0",
+    "prisma": "^7.8.0",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.8.0",
+    "@prisma/client": "^7.8.0"
+  },
+  "pnpm": {
+    "strictDepBuilds": false,
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "better-sqlite3",
+      "electron",
+      "esbuild",
+      "prisma"
+    ]
+  }
+}

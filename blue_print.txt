@@ -1,0 +1,540 @@
+Kurukuru Golf Cart Remote Monitoring System
+1. Final System Goal
+
+Build a stable desktop monitoring system for a city office to monitor 2 moving golf carts in real time.
+
+Each cart has:
+
+1 front camera
+1 internal camera
+1 GPS/GNSS source
+1 LTE/SIM router
+
+Monitoring room has:
+
+Ubuntu receiving PC for video wall
+Windows PC or same Ubuntu PC for map
+External display support
+
+Main target:
+
+4-camera live view
+low latency
+low bitrate
+GPS map tracking
+simple operator UI
+stable reconnect
+auto-start
+easy maintenance
+2. Final Technology Stack
+Desktop App: Electron + React + TypeScript
+Video Player: mpv
+Camera Protocol: RTSP low-latency H.264
+Map: Mapbox GL JS
+GPS: SE220 GNSS → local receiver
+Network: WireGuard VPN
+Database: SQLite
+ORM: Prisma
+Optional Stream Relay: MediaMTX
+OS Target: Ubuntu receiving PC
+3. Recommended Video Setting
+
+Client does not need Full HD in 4-layout.
+
+Use this:
+
+Resolution: 1280×720
+FPS: 10–15 fps
+Codec: H.264
+Bitrate: 1.2–2.0 Mbps per camera
+Keyframe interval: 1 sec
+Audio: Off
+
+Maximum traffic:
+
+1 camera = max 2 Mbps
+1 vehicle = 2 cameras = max 4 Mbps upload
+2 vehicles = 4 cameras = max 8 Mbps total
+
+Recommended normal setting:
+
+720p / 15fps / 1.5 Mbps
+
+This is realistic for LTE.
+
+4. System Architecture
+Vehicle 1
+ ├─ Axis/Hikvision Front Camera
+ ├─ Axis/Hikvision Internal Camera
+ ├─ PoE power
+ ├─ SE220 LTE/GNSS Router
+ └─ WireGuard VPN
+        ↓
+LTE / Mobile Network
+        ↓
+Monitoring Room VPN
+        ↓
+Ubuntu Receiving PC
+ ├─ Electron Control App
+ ├─ mpv Video Players
+ ├─ Mapbox Map Window
+ ├─ GPS Receiver Service
+ ├─ SQLite Database
+ └─ System Health Monitor
+5. Main Application Windows
+A. Control Window
+
+Purpose: operator/admin control.
+
+Features:
+
+- Vehicle list
+- Camera list
+- Open 4-camera wall
+- Open map window
+- Camera connection status
+- GPS status
+- Network status
+- Settings
+- Logs
+B. 4-Camera Video Wall
+
+Layout:
+
+┌────────────────────┬────────────────────┐
+│ Vehicle 1 Front    │ Vehicle 1 Internal │
+├────────────────────┼────────────────────┤
+│ Vehicle 2 Front    │ Vehicle 2 Internal │
+└────────────────────┴────────────────────┘
+
+Each tile shows:
+
+- Vehicle name
+- Camera name
+- Live / Reconnecting / Offline
+- Last connected time
+- Bitrate/FPS optional
+
+Double-click behavior:
+
+Double-click camera tile
+→ open large popup window
+→ play selected camera
+→ allow minimize / maximize / close
+C. Large Camera Popup
+
+Features:
+
+- Large live camera view
+- Minimize
+- Maximize
+- Close
+- Reconnect button
+- Snapshot button optional
+- Fullscreen optional
+D. Map Window
+
+Mapbox display:
+
+Vehicle 1: red marker + vehicle name
+Vehicle 2: green marker + vehicle name
+
+GPS behavior:
+
+GPS received every 1 sec
+marker moves smoothly
+if GPS delay > 5 sec = warning
+if GPS delay > 15 sec = offline
+
+Marker status:
+
+Green/normal: fresh GPS
+Yellow: delayed GPS
+Red/offline: no GPS
+6. SQLite Usage
+
+SQLite is OK.
+
+But use it correctly:
+
+Realtime GPS display = memory + WebSocket
+History/settings/logs = SQLite
+
+Do not make the map read SQLite every second.
+
+Correct flow:
+
+SE220 GPS data received
+→ parse GPS
+→ update latest vehicle location in memory
+→ send to map by WebSocket
+→ save GPS log to SQLite
+7. Database Design
+vehicles
+id
+name
+displayColor
+enabled
+createdAt
+updatedAt
+
+Example:
+
+Vehicle 1 / red
+Vehicle 2 / green
+cameras
+id
+vehicleId
+name
+type: FRONT / INTERNAL
+vendor: AXIS / HIKVISION / CUSTOM
+rtspUrl
+username
+passwordEncrypted
+bitrateLimit
+enabled
+createdAt
+updatedAt
+gps_points
+id
+vehicleId
+lat
+lng
+speed
+heading
+receivedAt
+createdAt
+system_events
+id
+level: INFO / WARNING / ERROR
+type
+message
+createdAt
+app_settings
+id
+key
+value
+updatedAt
+8. Recommended Folder Structure
+kurukuru-monitor/
+├─ apps/
+│  ├─ desktop/
+│  │  ├─ electron/
+│  │  │  ├─ main.ts
+│  │  │  ├─ preload.ts
+│  │  │  ├─ window-manager.ts
+│  │  │  ├─ mpv-manager.ts
+│  │  │  └─ gps-service.ts
+│  │  │
+│  │  ├─ src/
+│  │  │  ├─ App.tsx
+│  │  │  ├─ pages/
+│  │  │  │  ├─ ControlPage.tsx
+│  │  │  │  ├─ VideoWallPage.tsx
+│  │  │  │  ├─ MapPage.tsx
+│  │  │  │  └─ SettingsPage.tsx
+│  │  │  ├─ components/
+│  │  │  │  ├─ CameraTile.tsx
+│  │  │  │  ├─ VehicleMarker.tsx
+│  │  │  │  ├─ StatusBadge.tsx
+│  │  │  │  └─ CameraForm.tsx
+│  │  │  ├─ stores/
+│  │  │  │  ├─ vehicleStore.ts
+│  │  │  │  ├─ cameraStore.ts
+│  │  │  │  └─ gpsStore.ts
+│  │  │  └─ styles/
+│  │  │
+│  │  ├─ package.json
+│  │  └─ vite.config.ts
+│  │
+│  └─ api/
+│     ├─ src/
+│     │  ├─ server.ts
+│     │  ├─ routes/
+│     │  │  ├─ cameras.ts
+│     │  │  ├─ vehicles.ts
+│     │  │  ├─ gps.ts
+│     │  │  └─ health.ts
+│     │  ├─ services/
+│     │  │  ├─ gps-parser.ts
+│     │  │  ├─ camera-health.ts
+│     │  │  └─ event-log.ts
+│     │  └─ websocket.ts
+│     └─ package.json
+│
+├─ prisma/
+│  └─ schema.prisma
+│
+├─ scripts/
+│  ├─ install-ubuntu.sh
+│  ├─ start-dev.sh
+│  └─ reset-db.sh
+│
+├─ config/
+│  ├─ mediamtx.yml
+│  └─ sample.env
+│
+├─ docs/
+│  ├─ system-blueprint.md
+│  ├─ operation-manual.md
+│  ├─ maintenance-manual.md
+│  └─ field-test-checklist.md
+│
+└─ package.json
+9. mpv Low-Latency Settings
+
+Use mpv like this:
+
+mpv rtsp://user:pass@camera-ip/stream \
+  --profile=low-latency \
+  --untimed \
+  --no-cache \
+  --cache=no \
+  --demuxer-lavf-o=rtsp_transport=tcp
+
+Alternative for lower latency:
+
+--demuxer-lavf-o=rtsp_transport=udp
+
+Use TCP first for stability.
+Test UDP if delay is too high.
+
+10. Network Design
+
+Recommended:
+
+WireGuard VPN
+
+Why:
+
+- Secure
+- Stable
+- No public camera ports
+- Works well with Linux
+- Easy to maintain
+
+Do not expose RTSP directly to internet.
+
+Vehicle router should connect to VPN.
+
+Monitoring PC sees cameras like private IPs:
+
+Vehicle 1 Front:    10.10.1.11
+Vehicle 1 Internal: 10.10.1.12
+Vehicle 2 Front:    10.10.2.11
+Vehicle 2 Internal: 10.10.2.12
+11. GPS Design
+
+SE220 GNSS sends GPS data.
+
+Need to confirm actual output method:
+
+NMEA0183 over TCP
+NMEA0183 over UDP
+Router API
+Serial-to-network forwarding
+
+Expected NMEA example:
+
+$GPRMC,...
+$GPGGA,...
+
+GPS receiver service:
+
+1. listen for GPS data
+2. parse NMEA
+3. identify vehicle
+4. update memory
+5. broadcast to Mapbox window
+6. save to SQLite
+12. Reconnect Logic
+
+Very important.
+
+Camera behavior:
+
+If stream fails:
+  show "Reconnecting..."
+  retry after 2 sec
+  retry after 5 sec
+  retry after 10 sec
+  keep retrying
+
+GPS behavior:
+
+No GPS for 5 sec:
+  show delayed warning
+
+No GPS for 15 sec:
+  show offline
+
+GPS returns:
+  automatically recover
+
+App behavior:
+
+If app crashes:
+  systemd restarts app
+
+If PC reboots:
+  app starts automatically
+13. Auto Start on Ubuntu
+
+Use systemd:
+
+kurukuru-api.service
+kurukuru-desktop.service
+
+On PC boot:
+
+1. Start API/GPS service
+2. Start Electron desktop app
+3. Open control window
+4. Operator can open video wall/map
+
+Optional:
+
+Automatically open video wall and map after boot
+14. Development Phases
+Phase 1 — Prototype
+
+Goal: prove core UI and video.
+
+Build:
+
+- Electron app
+- Camera settings
+- 4-camera layout
+- mpv launch
+- double-click popup
+- dummy GPS map
+Phase 2 — Real Camera Test
+
+Build:
+
+- Axis RTSP test
+- Hikvision RTSP test
+- low-bitrate camera settings
+- reconnect logic
+Phase 3 — GPS Integration
+
+Build:
+
+- SE220 GPS receiver
+- NMEA parser
+- Mapbox markers
+- red/green vehicle markers
+- smooth movement
+Phase 4 — Field Test
+
+Test:
+
+- LTE movement
+- weak signal
+- 1 sec GPS update
+- camera delay
+- reconnect
+- 2-day battery operation
+Phase 5 — Delivery Package
+
+Create:
+
+- installer script
+- operation manual
+- maintenance manual
+- field test report
+- backup/restore settings
+15. Operator UI Design
+
+Keep it simple.
+
+Main buttons:
+
+Open Video Wall
+Open Map
+Settings
+System Status
+Logs
+
+Camera status:
+
+LIVE
+RECONNECTING
+OFFLINE
+DISABLED
+
+Vehicle status:
+
+ONLINE
+GPS DELAYED
+GPS OFFLINE
+16. Delivery Documents
+
+Prepare these for city office:
+
+1. System architecture document
+2. Network configuration document
+3. Camera configuration sheet
+4. GPS configuration sheet
+5. Operation manual
+6. Maintenance manual
+7. Field test checklist
+8. Failure recovery procedure
+17. Proposal Wording
+
+Use this wording:
+
+The system is designed as a low-latency remote monitoring system for municipal golf carts. It provides live camera monitoring and real-time GPS map display using the existing receiving PC and displays.
+
+The camera streams are optimized for stable LTE operation using low-bitrate H.264 RTSP video. The system targets approximately 1 second video delay under normal network conditions, with automatic reconnection when mobile signal quality changes.
+
+Do not promise:
+
+Always under 1 second
+
+Say:
+
+Target approximately 1 second under normal LTE conditions.
+18. Final Recommended Specification
+System name:
+Kurukuru Remote Monitoring System
+
+Vehicles:
+2
+
+Cameras:
+4 total
+2 per vehicle
+
+Video:
+RTSP H.264
+720p
+10–15fps
+max 2Mbps per camera
+
+Map:
+Mapbox
+Vehicle 1 red marker
+Vehicle 2 green marker
+1 sec GPS update
+
+Desktop:
+Electron + React
+
+Player:
+mpv
+
+Database:
+SQLite
+
+Network:
+WireGuard VPN
+
+GPS:
+SE220 GNSS receiver
+
+OS:
+Ubuntu receiving PC
+
+Optional:
+MediaMTX relay

@@ -1,0 +1,91 @@
+# Dependencies
+
+node_modules/
+.pnpm-store/
+.corepack/
+
+# Build outputs
+
+dist/
+dist-portable/
+dist-electron/
+coverage/
+out/
+
+# Electron build outputs
+
+apps/desktop/out/
+apps/desktop/dist/
+apps/desktop/dist-electron/
+
+# Environment files
+
+.env
+.env.*
+config.local.env
+
+# Database files
+
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Runtime data
+
+data/
+runtime/
+
+# Logs
+
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# MediaMTX runtime
+
+mediamtx/*.log
+mediamtx/recordings/
+mediamtx/data/
+
+# OS files
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+
+.vscode/
+.idea/
+*.iml
+
+# Temporary files
+
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# Android
+
+.gradle/
+local.properties
+*.keystore
+*.jks
+
+# Misc
+
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+apps/desktop/dist-new/
+apps/desktop/dist-new/
+
+mediamtx/*.exe

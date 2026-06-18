@@ -1,0 +1,21 @@
+[Unit]
+Description=Kurukuru Monitor Fastify API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{APP_USER}}
+Group={{APP_GROUP}}
+WorkingDirectory={{WORKDIR}}
+Environment=NODE_ENV=production
+EnvironmentFile={{WORKDIR}}/.env
+ExecStart=/usr/bin/env bash -lc 'cd "{{WORKDIR}}" && corepack pnpm start:api'
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

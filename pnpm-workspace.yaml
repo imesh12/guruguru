@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+allowBuilds:
+  '@prisma/engines': true
+  better-sqlite3: true
+  electron: true
+  electron-winstaller: false
+  esbuild: true
+  prisma: true

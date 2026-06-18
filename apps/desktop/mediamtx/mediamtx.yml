@@ -1,0 +1,34 @@
+logLevel: info
+logDestinations: [stdout]
+logStructured: false
+
+rtsp: yes
+rtspAddress: 127.0.0.1:8554
+webrtc: yes
+webrtcAddress: 127.0.0.1:8889
+webrtcAdditionalHosts: [127.0.0.1, localhost]
+webrtcIPsFromInterfaces: no
+hls: yes
+hlsAddress: 127.0.0.1:8888
+api: yes
+apiAddress: 127.0.0.1:9997
+
+pathDefaults:
+  rtspTransport: tcp
+  sourceOnDemand: yes
+  sourceOnDemandStartTimeout: 30s
+  sourceOnDemandCloseAfter: 60s
+
+paths:
+  camera-vehicle-1-front:
+    source: 'rtsp://root:Cw8839629@192.168.1.190:554/axis-media/media.amp?videocodec=h264&resolution=1024x576&fps=10&compression=35'
+  camera-vehicle-1-internal:
+    source: 'rtsp://root:Cw8839629@192.168.1.187:554/axis-media/media.amp?videocodec=h264&resolution=1024x576&fps=10&compression=35'
+  camera-vehicle-2-front:
+    source: 'rtsp://root:Cw8839629@192.168.1.198:554/axis-media/media.amp?videocodec=h264&resolution=1024x576&fps=10&compression=35'
+  camera-vehicle-2-internal:
+    source: 'rtsp://root:Cw8839629@192.168.1.175:554/axis-media/media.amp?videocodec=h264&resolution=1024x576&fps=10&compression=35'
+  paths:
+  testcam:
+    source: 'rtsp://root:Cw8839629@219.112.88.189:554/axis-media/media.amp?videocodec=h264&resolution=1024x576&fps=10&compression=38'
+    rtspTransport: tcp

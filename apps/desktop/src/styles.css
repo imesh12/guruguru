@@ -1,0 +1,78 @@
+@import "tailwindcss";
+@import "mapbox-gl/dist/mapbox-gl.css";
+
+:root {
+  color: #e2e8f0;
+  background: #020617;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #020617;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+}
+
+.vehicle-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 6px rgba(15, 23, 42, 0.32);
+}
+
+.vehicle-marker-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transform: translateY(-0.5rem);
+}
+
+.vehicle-marker-card__dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0 0 6px rgba(15, 23, 42, 0.4);
+}
+
+.vehicle-marker-card__label {
+  border-radius: 9999px;
+  padding: 0.45rem 0.8rem;
+  background: rgba(2, 6, 23, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+}
+
+.vehicle-marker-card__title {
+  color: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.vehicle-marker-card__meta {
+  margin-top: 0.18rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.vehicle-marker-card__meta.online {
+  color: #86efac;
+}
+
+.vehicle-marker-card__meta.delayed {
+  color: #fde68a;
+}
+
+.vehicle-marker-card__meta.offline {
+  color: #fda4af;
+}

@@ -1,0 +1,25 @@
+[Unit]
+Description=Kurukuru Monitor Electron Desktop
+After=network-online.target graphical.target kurukuru-api.service
+Requires=kurukuru-api.service
+Wants=graphical.target
+
+[Service]
+Type=simple
+User={{APP_USER}}
+Group={{APP_GROUP}}
+WorkingDirectory={{WORKDIR}}
+Environment=NODE_ENV=production
+Environment=DISPLAY={{DISPLAY}}
+Environment=XAUTHORITY={{XAUTHORITY}}
+Environment=ELECTRON_ENABLE_LOGGING=1
+EnvironmentFile={{WORKDIR}}/.env
+ExecStart=/usr/bin/env bash -lc 'cd "{{WORKDIR}}" && export DISPLAY="{{DISPLAY}}" XAUTHORITY="{{XAUTHORITY}}" && corepack pnpm start:desktop'
+Restart=always
+RestartSec=8
+TimeoutStartSec=45
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target
