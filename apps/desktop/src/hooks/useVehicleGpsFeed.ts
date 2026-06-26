@@ -16,6 +16,8 @@ type AnimatedPoint = VehicleGpsState & {
 };
 
 type SnapshotSource = 'websocket' | 'http' | 'demo';
+const SE220_ANIMATION_DURATION_MS = 600;
+const DEFAULT_ANIMATION_DURATION_MS = 900;
 
 const toStatus = (ageSeconds: number): VehicleMapStatus => {
   if (ageSeconds <= 5) {
@@ -61,7 +63,7 @@ export function useVehicleGpsFeed(enabled = true) {
     let resolvedWebSocketUrl = `${API_BASE_URL.replace(/^http/u, 'ws')}/ws/vehicles`;
 
     const loadVehicleColors = async () => {
-      const list = await window.electronAPI.listVehicles();
+      const list = (await window.electronAPI.listVehicles()) as VehicleAdmin[];
       if (disposed) {
         return;
       }
@@ -175,6 +177,10 @@ export function useVehicleGpsFeed(enabled = true) {
           headingEstimateDeg: vehicle.investigation?.headingEstimateDeg ?? null,
           suspiciousJump: vehicle.investigation?.suspiciousJump ?? null,
           duplicateSample: vehicle.investigation?.duplicateSample ?? null,
+          gnssStale: vehicle.investigation?.gnssStale ?? null,
+          positionFresh: vehicle.investigation?.positionFresh ?? null,
+          requestDurationMs: vehicle.investigation?.requestDurationMs ?? null,
+          effectiveUpdateIntervalMs: vehicle.investigation?.effectiveUpdateIntervalMs ?? null,
         });
 
         const existing = targetsRef.current.get(vehicle.vehicleId);
@@ -184,6 +190,10 @@ export function useVehicleGpsFeed(enabled = true) {
           existing.targetLng === vehicle.lng;
         const sameReceivedAt = existing !== undefined && existing.receivedAt === vehicle.receivedAt;
         const isDuplicateSample = sameCoordinates && sameReceivedAt;
+        const shouldSkipMovementAnimation =
+          sameCoordinates &&
+          (vehicle.investigation?.duplicateSample === true ||
+            vehicle.investigation?.coordinateChanged === false);
         if (existing) {
           existing.vehicleName = vehicle.vehicleName;
           existing.locationStatus = vehicle.locationStatus;
@@ -206,7 +216,7 @@ export function useVehicleGpsFeed(enabled = true) {
             continue;
           }
 
-          if (isDuplicateSample) {
+          if (isDuplicateSample || shouldSkipMovementAnimation) {
             existing.receivedAt = vehicle.receivedAt;
             existing.investigation = {
               ...(vehicle.investigation ?? {}),
@@ -215,12 +225,12 @@ export function useVehicleGpsFeed(enabled = true) {
               frontendSequence,
             };
 
-            if (source === 'http') {
+            if (source === 'http' || shouldSkipMovementAnimation) {
               logMapInvestigation('received', {
                 source,
                 vehicleId: vehicle.vehicleId,
                 skipped: true,
-                reason: 'same-coordinate-same-receivedAt',
+                reason: isDuplicateSample ? 'same-coordinate-same-receivedAt' : 'same-coordinate-no-move-animation',
                 routerSampleAgeMs: vehicle.investigation?.routerSampleAgeMs ?? null,
                 totalDelayMs,
               });
@@ -235,7 +245,10 @@ export function useVehicleGpsFeed(enabled = true) {
           existing.targetLng = vehicle.lng;
           existing.receivedAt = vehicle.receivedAt;
           existing.animationStart = now;
-          existing.animationDurationMs = 900;
+          existing.animationDurationMs =
+            vehicle.source === 'rooster-se220-direct'
+              ? SE220_ANIMATION_DURATION_MS
+              : DEFAULT_ANIMATION_DURATION_MS;
         } else {
           targetsRef.current.set(vehicle.vehicleId, {
             ...vehicle,

@@ -28,6 +28,9 @@ type DirectPollerRuntimeState = {
   lastLatitude: number | null;
   lastLongitude: number | null;
   lastGnssTime: string | null;
+  lastPollStartedAt: string | null;
+  lastPollCompletedAt: string | null;
+  lastPollCompletedAtMs: number | null;
 };
 
 const SUCCESS_LOG_INTERVAL_MS = 30_000;
@@ -157,6 +160,7 @@ export class Se220DirectPoller implements LocationProvider {
 
   private readonly enabled: boolean;
   private readonly pollIntervalMs: number;
+  private readonly gnssStaleThresholdMs: number;
   private readonly targets: DirectPollerTarget[];
   private readonly logger: PollerLogger | undefined;
   private readonly runtimeStateByVehicle = new Map<string, DirectPollerRuntimeState>();
@@ -184,6 +188,11 @@ export class Se220DirectPoller implements LocationProvider {
       1000,
       'SE220_DIRECT_POLL_INTERVAL_MS',
     );
+    this.gnssStaleThresholdMs = parsePositiveInteger(
+      process.env.SE220_GNSS_STALE_THRESHOLD_MS,
+      5000,
+      'SE220_GNSS_STALE_THRESHOLD_MS',
+    );
     const allowSelfSigned = parseBoolean(process.env.SE220_DIRECT_ALLOW_SELF_SIGNED, true);
     this.targets = parseDirectPollers(process.env.SE220_DIRECT_POLLERS, allowSelfSigned, requestTimeoutMs, authLockCooldownMs, logger);
 
@@ -200,6 +209,9 @@ export class Se220DirectPoller implements LocationProvider {
         lastLatitude: null,
         lastLongitude: null,
         lastGnssTime: null,
+        lastPollStartedAt: null,
+        lastPollCompletedAt: null,
+        lastPollCompletedAtMs: null,
       });
     }
   }
@@ -311,10 +323,19 @@ export class Se220DirectPoller implements LocationProvider {
     try {
       const localPollStartedAtMs = Date.now();
       const localPollTime = new Date(localPollStartedAtMs).toISOString();
+      const previousPollStartedAtMs =
+        state.lastPollStartedAt === null ? null : Date.parse(state.lastPollStartedAt);
+      const effectiveUpdateIntervalMs =
+        previousPollStartedAtMs === null ? null : Math.max(0, localPollStartedAtMs - previousPollStartedAtMs);
+      state.lastPollStartedAt = localPollTime;
       const next = await target.client.getGnssInfo();
       const apiPollReceivedAtMs = Date.now();
       const receivedAt = new Date(apiPollReceivedAtMs).toISOString();
+      const requestDurationMs = Math.max(0, apiPollReceivedAtMs - localPollStartedAtMs);
       const routerSampleAgeMs = Math.max(0, apiPollReceivedAtMs - Date.parse(next.gnssTime));
+      const gnssStale = routerSampleAgeMs >= this.gnssStaleThresholdMs;
+      const communicationFresh = true;
+      const positionFresh = !gnssStale;
       const coordinateSignature = `${next.latitude.toFixed(6)},${next.longitude.toFixed(6)}`;
       const coordinateChanged = state.lastCoordinateSignature !== coordinateSignature;
       const intervalSinceLastCoordinateChangeMs = state.lastCoordinateChangeAtMs === null ? null : apiPollReceivedAtMs - state.lastCoordinateChangeAtMs;
@@ -350,9 +371,17 @@ export class Se220DirectPoller implements LocationProvider {
           routeId: target.routeId,
           localPollTime,
           apiPollReceivedAt: receivedAt,
+          requestDurationMs,
+          effectiveUpdateIntervalMs,
+          lastPollStartedAt: localPollTime,
+          lastPollCompletedAt: receivedAt,
           routerGnssTime: next.gnssTime,
           latitude: next.latitude,
           longitude: next.longitude,
+          gnssStaleThresholdMs: this.gnssStaleThresholdMs,
+          gnssStale,
+          communicationFresh,
+          positionFresh,
           coordinateChanged,
           ageMs: routerSampleAgeMs,
           intervalSinceLastCoordinateChangeMs,
@@ -424,6 +453,10 @@ export class Se220DirectPoller implements LocationProvider {
           apiPollReceivedAt: receivedAt,
           routerGnssTime: next.gnssTime,
           routerSampleAgeMs,
+          gnssStaleThresholdMs: this.gnssStaleThresholdMs,
+          gnssStale,
+          communicationFresh,
+          positionFresh,
           coordinateChanged,
           intervalSinceLastCoordinateChangeMs,
           distanceFromPreviousMeters,
@@ -431,12 +464,18 @@ export class Se220DirectPoller implements LocationProvider {
           headingEstimateDeg,
           suspiciousJump,
           duplicateSample,
+          requestDurationMs,
+          effectiveUpdateIntervalMs,
+          lastPollStartedAt: localPollTime,
+          lastPollCompletedAt: receivedAt,
         },
       };
 
       await this.locationManager.ingestLocation(payload);
       state.status = LocationStatus.ONLINE;
       state.lastUpdateAt = receivedAt;
+      state.lastPollCompletedAt = receivedAt;
+      state.lastPollCompletedAtMs = apiPollReceivedAtMs;
       state.error = null;
       state.successCountSinceLastLog += 1;
       state.lastCoordinateSignature = coordinateSignature;

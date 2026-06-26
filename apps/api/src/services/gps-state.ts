@@ -22,6 +22,10 @@ export type VehicleGpsUpdate = {
     apiPollReceivedAt?: string | null;
     routerGnssTime?: string | null;
     routerSampleAgeMs?: number | null;
+    gnssStaleThresholdMs?: number | null;
+    gnssStale?: boolean | null;
+    communicationFresh?: boolean | null;
+    positionFresh?: boolean | null;
     coordinateChanged?: boolean | null;
     intervalSinceLastCoordinateChangeMs?: number | null;
     distanceFromPreviousMeters?: number | null;
@@ -29,6 +33,10 @@ export type VehicleGpsUpdate = {
     headingEstimateDeg?: number | null;
     suspiciousJump?: boolean | null;
     duplicateSample?: boolean | null;
+    requestDurationMs?: number | null;
+    effectiveUpdateIntervalMs?: number | null;
+    lastPollStartedAt?: string | null;
+    lastPollCompletedAt?: string | null;
     locationManagerReceivedAt?: string | null;
     locationManagerUpdatedAt?: string | null;
     locationManagerProcessingMs?: number | null;

@@ -251,7 +251,21 @@ function createGoogleVehicleOverlay(
 
 
 function buildVehicleMeta(vehicle: VehicleMapViewModel) {
-  return `${vehicle.status} | ${vehicle.ageSeconds}s ago`;
+  const parts = [`${vehicle.status} | updated ${vehicle.ageSeconds}s ago`];
+  const routerSampleAgeMs = vehicle.investigation?.routerSampleAgeMs ?? null;
+  const routerSampleAgeSec =
+    typeof routerSampleAgeMs === 'number' && Number.isFinite(routerSampleAgeMs)
+      ? routerSampleAgeMs / 1000
+      : null;
+  const gnssStale =
+    vehicle.investigation?.positionFresh === false ||
+    vehicle.investigation?.gnssStale === true;
+
+  if (routerSampleAgeSec !== null) {
+    parts.push(`${gnssStale ? 'GNSS stale' : 'GNSS age'} ${routerSampleAgeSec.toFixed(1)}s`);
+  }
+
+  return parts.join(' | ');
   /*
 
   const parts = [`${vehicle.status} | ${vehicle.ageSeconds}s ago`];
@@ -781,8 +795,13 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
       let dragListener: google.maps.MapsEventListener | null = null;
       let headingListener: google.maps.MapsEventListener | null = null;
       let clickListener: google.maps.MapsEventListener | null = null;
+      const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-      void loadGoogleMaps(import.meta.env.VITE_GOOGLE_MAPS_API_KEY)
+      if (!googleMapsApiKey) {
+        return;
+      }
+
+      void loadGoogleMaps(googleMapsApiKey)
         .then((googleApi) => {
           console.info('[google-map] loaded', {
             hasContainer: Boolean(containerRef.current),
