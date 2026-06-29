@@ -61,9 +61,16 @@ export function useVehicleGpsFeed(enabled = true) {
     let vehicleRefreshTimer = 0;
     let resolvedApiBaseUrl = API_BASE_URL;
     let resolvedWebSocketUrl = `${API_BASE_URL.replace(/^http/u, 'ws')}/ws/vehicles`;
+    const electronApi = window.electronAPI;
 
     const loadVehicleColors = async () => {
-      const list = (await window.electronAPI.listVehicles()) as VehicleAdmin[];
+      if (!electronApi?.listVehicles) {
+        vehicleColorsRef.current = new Map();
+        syncState();
+        return;
+      }
+
+      const list = (await electronApi.listVehicles()) as VehicleAdmin[];
       if (disposed) {
         return;
       }
@@ -384,8 +391,15 @@ export function useVehicleGpsFeed(enabled = true) {
       });
     };
 
-    void window.electronAPI
-      .getRuntimeConfig()
+    const resolveRuntimeConfig = electronApi?.getRuntimeConfig
+      ? electronApi.getRuntimeConfig()
+      : Promise.resolve({
+          demoMode: false,
+          apiBaseUrl: API_BASE_URL,
+          embeddedPlaybackPoc: false,
+        });
+
+    void resolveRuntimeConfig
       .then((config) => {
         if (disposed) {
           return;
@@ -432,7 +446,22 @@ export function useVehicleGpsFeed(enabled = true) {
         }, 5000);
       })
       .catch(() => {
-        setError('Runtime configuration unavailable');
+        resolvedApiBaseUrl = API_BASE_URL;
+        const webSocketUrl = new URL('/ws/vehicles', resolvedApiBaseUrl);
+        webSocketUrl.protocol = webSocketUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+        resolvedWebSocketUrl = webSocketUrl.toString();
+        void loadVehicleColors().catch(() => {
+          // Fall back to default marker colors if vehicle metadata is unavailable.
+        });
+        void fetchLatest('initial').catch(() => {
+          setError('API unavailable');
+        });
+        connect();
+        refreshTimer = window.setInterval(() => {
+          void fetchLatest(websocketConnectedRef.current ? 'health-check' : 'fallback').catch(() => {
+            // Keep the existing websocket-driven UI stable if a single refresh fails.
+          });
+        }, 1000);
       });
 
     frame = window.requestAnimationFrame(animationLoop);

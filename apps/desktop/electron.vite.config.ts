@@ -31,6 +31,7 @@ export default defineConfig({
     base: './',
     plugins: [react(), tailwindcss()],
     server: {
+      host: '0.0.0.0',
       watch: {
         ignored: ['**/runtime/**', '**/logs/**', '**/electron-cache/**', '**/electron-user-data/**'],
       },

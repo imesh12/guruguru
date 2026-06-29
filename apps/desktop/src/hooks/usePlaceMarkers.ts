@@ -8,6 +8,13 @@ export function usePlaceMarkers() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!window.electronAPI?.listPlaceMarkers || !window.electronAPI?.onPlaceMarkersChanged) {
+      setPlaceMarkers([]);
+      setError(null);
+      setLoading(false);
+      return () => undefined;
+    }
+
     let disposed = false;
 
     const load = async () => {

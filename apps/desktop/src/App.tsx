@@ -57,6 +57,7 @@ export default function App() {
               <Route path="/dashboard" element={<ControlPage />} />
               <Route path="/video-wall" element={<VideoWallPage />} />
               <Route path="/map" element={<MapPage />} />
+              <Route path="/operator/map" element={<MapPage />} />
               <Route
                 path="/daily-report"
                 element={(
