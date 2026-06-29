@@ -16,6 +16,11 @@ export type LocationInvestigationTelemetry = {
   apiPollReceivedAt?: string | null;
   routerGnssTime?: string | null;
   routerSampleAgeMs?: number | null;
+  originalLatitude?: number | null;
+  originalLongitude?: number | null;
+  offsetApplied?: boolean | null;
+  latitudeOffset?: number | null;
+  longitudeOffset?: number | null;
   gnssStaleThresholdMs?: number | null;
   gnssStale?: boolean | null;
   communicationFresh?: boolean | null;

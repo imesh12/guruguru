@@ -16,6 +16,11 @@ type DirectPollerTarget = {
   client: Se220DirectClient;
 };
 
+type VehicleLocationOffset = {
+  latitudeOffset: number;
+  longitudeOffset: number;
+};
+
 type DirectPollerRuntimeState = {
   status: LocationStatus;
   lastUpdateAt: string | null;
@@ -52,6 +57,67 @@ const parsePositiveInteger = (value: string | undefined, fallback: number, key: 
   }
 
   return parsed;
+};
+
+const parseFiniteNumber = (value: string, label: string) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Invalid ${label}. Expected a finite number.`);
+  }
+
+  return parsed;
+};
+
+const parseVehicleLocationOffsets = (raw: string | undefined, logger?: PollerLogger) => {
+  const offsets = new Map<string, VehicleLocationOffset>();
+  if (!raw?.trim()) {
+    return offsets;
+  }
+
+  for (const [index, entryRaw] of raw.split(',').map((entry) => entry.trim()).filter(Boolean).entries()) {
+    const parts = entryRaw.split('|').map((part) => part.trim());
+    if (parts.length !== 3) {
+      logger?.warn?.(
+        {
+          providerId: 'rooster-se220-direct',
+          entryIndex: index,
+        },
+        'Skipping invalid VEHICLE_LOCATION_OFFSETS entry. Expected vehicleId|latOffset|lngOffset.',
+      );
+      continue;
+    }
+
+    const [vehicleId, latitudeOffsetRaw, longitudeOffsetRaw] = parts;
+    if (!vehicleId) {
+      logger?.warn?.(
+        {
+          providerId: 'rooster-se220-direct',
+          entryIndex: index,
+        },
+        'Skipping VEHICLE_LOCATION_OFFSETS entry with empty vehicleId.',
+      );
+      continue;
+    }
+
+    try {
+      offsets.set(vehicleId, {
+        latitudeOffset: parseFiniteNumber(latitudeOffsetRaw ?? '', 'latitudeOffset'),
+        longitudeOffset: parseFiniteNumber(longitudeOffsetRaw ?? '', 'longitudeOffset'),
+      });
+    } catch (error) {
+      logger?.warn?.(
+        {
+          providerId: 'rooster-se220-direct',
+          entryIndex: index,
+          vehicleId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Skipping invalid VEHICLE_LOCATION_OFFSETS entry.',
+      );
+    }
+  }
+
+  return offsets;
 };
 
 const toRadians = (value: number) => (value * Math.PI) / 180;
@@ -161,6 +227,7 @@ export class Se220DirectPoller implements LocationProvider {
   private readonly enabled: boolean;
   private readonly pollIntervalMs: number;
   private readonly gnssStaleThresholdMs: number;
+  private readonly vehicleLocationOffsets: Map<string, VehicleLocationOffset>;
   private readonly targets: DirectPollerTarget[];
   private readonly logger: PollerLogger | undefined;
   private readonly runtimeStateByVehicle = new Map<string, DirectPollerRuntimeState>();
@@ -192,6 +259,10 @@ export class Se220DirectPoller implements LocationProvider {
       process.env.SE220_GNSS_STALE_THRESHOLD_MS,
       5000,
       'SE220_GNSS_STALE_THRESHOLD_MS',
+    );
+    this.vehicleLocationOffsets = parseVehicleLocationOffsets(
+      process.env.VEHICLE_LOCATION_OFFSETS,
+      logger,
     );
     const allowSelfSigned = parseBoolean(process.env.SE220_DIRECT_ALLOW_SELF_SIGNED, true);
     this.targets = parseDirectPollers(process.env.SE220_DIRECT_POLLERS, allowSelfSigned, requestTimeoutMs, authLockCooldownMs, logger);
@@ -332,22 +403,30 @@ export class Se220DirectPoller implements LocationProvider {
       const apiPollReceivedAtMs = Date.now();
       const receivedAt = new Date(apiPollReceivedAtMs).toISOString();
       const requestDurationMs = Math.max(0, apiPollReceivedAtMs - localPollStartedAtMs);
+      const originalLatitude = next.latitude;
+      const originalLongitude = next.longitude;
+      const vehicleLocationOffset = this.vehicleLocationOffsets.get(target.vehicleId);
+      const latitudeOffset = vehicleLocationOffset?.latitudeOffset ?? 0;
+      const longitudeOffset = vehicleLocationOffset?.longitudeOffset ?? 0;
+      const offsetApplied = vehicleLocationOffset !== undefined;
+      const latitude = originalLatitude + latitudeOffset;
+      const longitude = originalLongitude + longitudeOffset;
       const routerSampleAgeMs = Math.max(0, apiPollReceivedAtMs - Date.parse(next.gnssTime));
       const gnssStale = routerSampleAgeMs >= this.gnssStaleThresholdMs;
       const communicationFresh = true;
       const positionFresh = !gnssStale;
-      const coordinateSignature = `${next.latitude.toFixed(6)},${next.longitude.toFixed(6)}`;
+      const coordinateSignature = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
       const coordinateChanged = state.lastCoordinateSignature !== coordinateSignature;
       const intervalSinceLastCoordinateChangeMs = state.lastCoordinateChangeAtMs === null ? null : apiPollReceivedAtMs - state.lastCoordinateChangeAtMs;
       const duplicateSample =
         !coordinateChanged &&
         state.lastGnssTime === next.gnssTime &&
-        state.lastLatitude === next.latitude &&
-        state.lastLongitude === next.longitude;
+        state.lastLatitude === latitude &&
+        state.lastLongitude === longitude;
       const distanceFromPreviousMeters =
         state.lastLatitude === null || state.lastLongitude === null
           ? null
-          : calculateDistanceMeters(state.lastLatitude, state.lastLongitude, next.latitude, next.longitude);
+          : calculateDistanceMeters(state.lastLatitude, state.lastLongitude, latitude, longitude);
       const timeDeltaSeconds =
         state.lastGnssTime === null ? null : Math.max(0, (Date.parse(next.gnssTime) - Date.parse(state.lastGnssTime)) / 1000);
       const speedEstimateMps =
@@ -357,7 +436,7 @@ export class Se220DirectPoller implements LocationProvider {
       const headingEstimateDeg =
         state.lastLatitude === null || state.lastLongitude === null
           ? null
-          : calculateHeadingDegrees(state.lastLatitude, state.lastLongitude, next.latitude, next.longitude);
+          : calculateHeadingDegrees(state.lastLatitude, state.lastLongitude, latitude, longitude);
       const suspiciousJump =
         coordinateChanged &&
         distanceFromPreviousMeters !== null &&
@@ -376,8 +455,13 @@ export class Se220DirectPoller implements LocationProvider {
           lastPollStartedAt: localPollTime,
           lastPollCompletedAt: receivedAt,
           routerGnssTime: next.gnssTime,
-          latitude: next.latitude,
-          longitude: next.longitude,
+          latitude,
+          longitude,
+          originalLatitude,
+          originalLongitude,
+          offsetApplied,
+          latitudeOffset,
+          longitudeOffset,
           gnssStaleThresholdMs: this.gnssStaleThresholdMs,
           gnssStale,
           communicationFresh,
@@ -411,8 +495,8 @@ export class Se220DirectPoller implements LocationProvider {
             providerId: this.id,
             vehicleId: target.vehicleId,
             routerGnssTime: next.gnssTime,
-            latitude: next.latitude,
-            longitude: next.longitude,
+            latitude,
+            longitude,
             intervalSinceLastCoordinateChangeMs,
             distanceFromPreviousMeters,
             speedEstimateMps,
@@ -427,8 +511,8 @@ export class Se220DirectPoller implements LocationProvider {
             providerId: this.id,
             vehicleId: target.vehicleId,
             routerGnssTime: next.gnssTime,
-            latitude: next.latitude,
-            longitude: next.longitude,
+            latitude,
+            longitude,
             ageMs: routerSampleAgeMs,
             intervalSinceLastCoordinateChangeMs,
             duplicateSample,
@@ -440,8 +524,8 @@ export class Se220DirectPoller implements LocationProvider {
       const payload: VehicleLocation = {
         vehicleId: target.vehicleId,
         routeId: target.routeId,
-        latitude: next.latitude,
-        longitude: next.longitude,
+        latitude,
+        longitude,
         gnssTime: next.gnssTime,
         receivedAt,
         source: 'rooster-se220-direct',
@@ -453,6 +537,11 @@ export class Se220DirectPoller implements LocationProvider {
           apiPollReceivedAt: receivedAt,
           routerGnssTime: next.gnssTime,
           routerSampleAgeMs,
+          originalLatitude,
+          originalLongitude,
+          offsetApplied,
+          latitudeOffset,
+          longitudeOffset,
           gnssStaleThresholdMs: this.gnssStaleThresholdMs,
           gnssStale,
           communicationFresh,
@@ -479,8 +568,8 @@ export class Se220DirectPoller implements LocationProvider {
       state.error = null;
       state.successCountSinceLastLog += 1;
       state.lastCoordinateSignature = coordinateSignature;
-      state.lastLatitude = next.latitude;
-      state.lastLongitude = next.longitude;
+      state.lastLatitude = latitude;
+      state.lastLongitude = longitude;
       state.lastGnssTime = next.gnssTime;
       if (coordinateChanged || state.lastCoordinateChangeAtMs === null) {
         state.lastCoordinateChangeAtMs = apiPollReceivedAtMs;
@@ -495,8 +584,8 @@ export class Se220DirectPoller implements LocationProvider {
             routeId: target.routeId,
             successCount: state.successCountSinceLastLog,
             gnssTime: next.gnssTime,
-            latitude: next.latitude,
-            longitude: next.longitude,
+            latitude,
+            longitude,
           },
           'SE220 direct polling success summary.',
         );

@@ -675,3 +675,40 @@ SE220_DIRECT_REQUEST_TIMEOUT_MS="1500"
 6. `receivedAt` が毎 poll 更新されることを確認
 7. ルーター GNSS 時刻が古い場合、デスクトップ UI が `GNSS stale X.Xs` を表示することを確認
 8. 同一座標連続時に heartbeat は進むが marker が不自然に揺れないことを確認
+
+## Vehicle Location Offset Calibration
+
+SE220 車両ごとの設置差や既知の座標ずれを補正するため、API 起動時に `VEHICLE_LOCATION_OFFSETS` を読み込み、SE220 の座標解析後かつ `LocationManager.ingestLocation()` の前にオフセットを適用する最小機能を追加しました。
+
+### Env Format
+
+```env
+VEHICLE_LOCATION_OFFSETS="vehicleId|latOffset|lngOffset,vehicleId2|latOffset|lngOffset"
+```
+
+例:
+
+```env
+VEHICLE_LOCATION_OFFSETS="vehicle-1|-0.0000628382|0.0000081422"
+```
+
+### Behavior
+
+- `rawJson` は変更しません
+- 補正後の `latitude` / `longitude` だけが最新位置として流れます
+- investigation に以下を追加します
+  - `originalLatitude`
+  - `originalLongitude`
+  - `offsetApplied`
+  - `latitudeOffset`
+  - `longitudeOffset`
+- 設定がない車両は `offsetApplied=false`
+- 不正な env entry は API を落とさず warning log を出して無視します
+
+### Verification
+
+`/gps/latest` または `/api/vehicles/locations` の対象 vehicle で、補正前後の値を比較してください。
+
+- `originalLatitude` / `originalLongitude` が元値
+- `latitude` / `longitude` が補正後
+- `offsetApplied=true`
