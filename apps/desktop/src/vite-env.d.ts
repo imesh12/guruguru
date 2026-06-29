@@ -20,7 +20,7 @@ interface Window {
     openMap: () => Promise<void>;
     openSystemStatus: () => Promise<void>;
     openSettings?: () => Promise<void>;
-    openCameraPopup: (cameraId: string) => Promise<void>;
+    openCameraWindow: (cameraId: string, title?: string) => Promise<void>;
 
     listVehicles: () => Promise<unknown[]>;
     listCameras: () => Promise<unknown[]>;

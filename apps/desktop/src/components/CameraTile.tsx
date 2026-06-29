@@ -6,8 +6,7 @@ type CameraTileProps = {
   slotIndex: number;
   camera: CameraSummary | null;
   status: CameraSessionState | undefined;
-  isFullscreen: boolean;
-  onToggleFullscreen: (cameraId: string | null) => void;
+  onOpenCameraWindow: (cameraId: string) => void;
   onReconnect: (cameraId: string) => void;
   videoContainerRef?: ((node: HTMLDivElement | null) => void) | undefined;
   videoContent?: ReactNode;
@@ -82,25 +81,24 @@ export function CameraTile({
   slotIndex,
   camera,
   status,
-  isFullscreen,
-  onToggleFullscreen,
+  onOpenCameraWindow,
   onReconnect,
   videoContainerRef,
   videoContent,
   debugOverlay,
 }: CameraTileProps) {
   const statusMeta = getStatusMeta(camera, status);
-  const canToggle = Boolean(camera?.enabled);
+  const canOpen = Boolean(camera?.enabled);
   const cameraLabel = camera ? `${camera.vehicleName} > ${camera.name}` : `スロット ${slotIndex}`;
 
   return (
     <article
       onDoubleClick={() => {
-        if (canToggle) {
-          onToggleFullscreen(camera?.id ?? null);
+        if (camera?.enabled) {
+          onOpenCameraWindow(camera.id);
         }
       }}
-      className={`relative flex h-full min-h-0 flex-col overflow-hidden border border-slate-400 bg-slate-700 ${canToggle ? 'cursor-pointer' : 'cursor-default'}`}
+      className={`relative flex h-full min-h-0 flex-col overflow-hidden border border-slate-400 bg-slate-700 ${canOpen ? 'cursor-pointer' : 'cursor-default'}`}
     >
       <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
         {videoContent ? videoContent : <div ref={videoContainerRef} className="absolute inset-0 h-full w-full overflow-hidden" />}
@@ -147,14 +145,14 @@ export function CameraTile({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              if (canToggle) {
-                onToggleFullscreen(camera?.id ?? null);
+              if (camera?.enabled) {
+                onOpenCameraWindow(camera.id);
               }
             }}
-            disabled={!canToggle}
+            disabled={!canOpen}
             className="inline-flex min-h-7 items-center justify-center rounded border border-slate-300 bg-white px-2 text-[12px] font-semibold text-slate-900 disabled:cursor-default disabled:opacity-50"
           >
-            {isFullscreen ? '戻る' : '拡大'}
+            開く
           </button>
         </div>
       </div>

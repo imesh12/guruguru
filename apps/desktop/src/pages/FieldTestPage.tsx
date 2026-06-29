@@ -252,7 +252,7 @@ export function FieldTestPage() {
                 variant="secondary"
                 onClick={() => {
                   if (firstCamera) {
-                    void window.electronAPI.openCameraPopup(firstCamera.id);
+                    void window.electronAPI.openCameraWindow(firstCamera.id, `${firstCamera.vehicleName} / ${firstCamera.name}`);
                   }
                 }}
                 disabled={!firstCamera}

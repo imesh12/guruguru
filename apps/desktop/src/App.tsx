@@ -11,6 +11,7 @@ const VideoWallPage = lazy(() => import('./pages/VideoWallPage').then((module) =
 const MapPage = lazy(() => import('./pages/MapPage').then((module) => ({ default: module.MapPage })));
 const DailyReportPage = lazy(() => import('./pages/DailyReportPage').then((module) => ({ default: module.DailyReportPage })));
 const CameraPlayerPage = lazy(() => import('./pages/CameraPlayerPage').then((module) => ({ default: module.CameraPlayerPage })));
+const CameraPopoutPage = lazy(() => import('./pages/CameraPopoutPage').then((module) => ({ default: module.CameraPopoutPage })));
 const SystemStatusPage = lazy(() => import('./pages/SystemStatusPage').then((module) => ({ default: module.SystemStatusPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const FieldTestPage = lazy(() => import('./pages/FieldTestPage').then((module) => ({ default: module.FieldTestPage })));
@@ -65,6 +66,7 @@ export default function App() {
                 )}
               />
               <Route path="/camera/:cameraId" element={<CameraPlayerPage />} />
+              <Route path="/camera-popout/:cameraId" element={<CameraPopoutPage />} />
               <Route
                 path="/system-status"
                 element={(

@@ -863,13 +863,21 @@ const bootstrap = async () => {
     windows.openSystemStatus();
   });
 
-  ipcMain.handle('window:open-camera-popup', async (_, cameraId: string) => {
-    await mpvManager.stopSession(`focus:${cameraId}`, 'restart');
+  ipcMain.handle('window:open-camera-window', async (_, payload: { cameraId: string; title?: string }) => {
+    const nextCameraId = payload.cameraId;
+    const previousCameraId = windows.getActiveCameraId();
+
+    if (previousCameraId && previousCameraId !== nextCameraId) {
+      await mpvManager.stopSession(`focus:${previousCameraId}`, 'shutdown');
+    }
+
+    await mpvManager.stopSession(`focus:${nextCameraId}`, 'restart');
+
     try {
-      const camera = await fetchPlaybackConfig(cameraId);
-      windows.openCamera(cameraId, `${camera.name} Player`);
+      const camera = await fetchPlaybackConfig(nextCameraId);
+      windows.openCameraWindow(nextCameraId, payload.title?.trim() || `${camera.name} Player`);
     } catch {
-      windows.openCamera(cameraId, 'Camera Player');
+      windows.openCameraWindow(nextCameraId, payload.title?.trim() || 'Camera Player');
     }
   });
 

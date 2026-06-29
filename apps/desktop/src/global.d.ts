@@ -93,7 +93,7 @@ export type ElectronAPI = {
   openVideoWall: () => Promise<void>;
   openMap: () => Promise<void>;
   openSystemStatus: () => Promise<void>;
-  openCameraPopup: (cameraId: string) => Promise<void>;
+  openCameraWindow: (cameraId: string, title?: string) => Promise<void>;
 
   getCameraPlaybackConfig: (cameraId: string) => Promise<CameraPlaybackConfig>;
   getCameraRuntimePlaybackConfig: (cameraId: string) => Promise<CameraPlaybackConfig>;

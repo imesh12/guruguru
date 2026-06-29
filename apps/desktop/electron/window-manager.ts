@@ -165,7 +165,8 @@ export const createWindowManager = (options?: {
   onCameraClosed?: (cameraId: string, webContentsId: number) => void | Promise<void>;
 }) => {
   const windows = new Map<WindowKey, BrowserWindow>();
-  const cameraWindows = new Map<string, BrowserWindow>();
+  let cameraWindow: BrowserWindow | null = null;
+  let activeCameraId: string | null = null;
   const windowRoutes = new Map<WindowKey, string>();
 
   const openWindow = (key: WindowKey, route: string, options: Electron.BrowserWindowConstructorOptions) => {
@@ -253,29 +254,70 @@ export const createWindowManager = (options?: {
       });
       return next;
     },
-    openCamera(cameraId: string, title: string) {
-      const existing = cameraWindows.get(cameraId);
+    openCameraWindow(cameraId: string, title: string) {
+      const route = `/camera-popout/${cameraId}`;
+      const existing = cameraWindow;
+
       if (existing && !existing.isDestroyed()) {
+        const previousCameraId = activeCameraId;
+        activeCameraId = cameraId;
+        existing.setTitle(title);
+        if (existing.isMinimized()) {
+          existing.restore();
+        }
+        void optionsArg.logger?.info('[camera-popout] switching camera', {
+          previousCameraId,
+          cameraId,
+        });
+        void optionsArg.logger?.info('[window-manager] reusing camera window', {
+          previousCameraId,
+          cameraId,
+          route,
+          title,
+        });
+        void loadWindowContent(existing, route, optionsArg.logger, optionsArg.openDevTools);
+        existing.show();
         existing.focus();
         return existing;
       }
 
-      const next = createAppWindow(`/camera/${cameraId}`, {
+      activeCameraId = cameraId;
+      void optionsArg.logger?.info('[window-manager] creating camera window', {
+        cameraId,
+        route,
+        title,
+      });
+      const next = createAppWindow(route, {
         title,
         width: 1440,
         height: 920,
       });
 
-      cameraWindows.set(cameraId, next);
+      cameraWindow = next;
       const cameraWebContentsId = next.webContents.id;
       next.on('close', () => {
-        void optionsArg.onCameraClosing?.(cameraId, cameraWebContentsId);
+        if (activeCameraId) {
+          void optionsArg.onCameraClosing?.(activeCameraId, cameraWebContentsId);
+        }
       });
       next.on('closed', () => {
-        cameraWindows.delete(cameraId);
-        void optionsArg.onCameraClosed?.(cameraId, cameraWebContentsId);
+        const closedCameraId = activeCameraId;
+        void optionsArg.logger?.info('[window-manager] camera window closed', {
+          cameraId: closedCameraId,
+        });
+        cameraWindow = null;
+        activeCameraId = null;
+        if (closedCameraId) {
+          void optionsArg.onCameraClosed?.(closedCameraId, cameraWebContentsId);
+        }
       });
       return next;
+    },
+    getActiveCameraId() {
+      return activeCameraId;
+    },
+    hasOpenCameraWindow() {
+      return Boolean(cameraWindow && !cameraWindow.isDestroyed());
     },
     getControlWindow() {
       const current = windows.get('control');

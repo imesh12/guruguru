@@ -1145,9 +1145,10 @@ export function VideoWallPage() {
                       ? wallTileStatuses.get(slot.camera.id)
                       : undefined
                 }
-                isFullscreen={fullscreenCameraId === slot.camera?.id}
-                onToggleFullscreen={(cameraId) => {
-                  setFullscreenCameraId((current) => (current === cameraId ? null : cameraId));
+                onOpenCameraWindow={(cameraId) => {
+                  const selectedCamera = slot.camera;
+                  const title = selectedCamera ? `${selectedCamera.vehicleName} / ${selectedCamera.name}` : undefined;
+                  void window.electronAPI.openCameraWindow(cameraId, title);
                 }}
                 onReconnect={(cameraId) => {
                   if (!mountedRef.current) {
@@ -1199,7 +1200,9 @@ export function VideoWallPage() {
                       desiredRunning
                       reconnectToken={wallReconnectTokens[slot.camera!.id] ?? 0}
                       onOpenExternalPlayer={() => {
-                        void window.electronAPI.openCameraPopup(slot.camera!.id);
+                        const selectedCamera = slot.camera;
+                        const title = selectedCamera ? `${selectedCamera.vehicleName} / ${selectedCamera.name}` : undefined;
+                        void window.electronAPI.openCameraWindow(slot.camera!.id, title);
                       }}
                       className="absolute inset-0 h-full w-full overflow-hidden bg-black"
                       videoClassName="absolute inset-0 h-full w-full min-h-0 min-w-0 object-cover"
