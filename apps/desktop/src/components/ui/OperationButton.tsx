@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 
 import { mergeClasses } from './foundation';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'success';
+type Variant = 'primary' | 'secondary' | 'danger' | 'success' | 'accent' | 'warning';
 
 const variantClasses: Record<Variant, string> = {
   primary: 'border-sky-700 bg-sky-700 text-white',
   secondary: 'border-slate-400 bg-white text-slate-900',
   danger: 'border-rose-700 bg-white text-rose-700',
   success: 'border-emerald-700 bg-emerald-700 text-white',
+  accent: 'border-violet-700 bg-violet-700 text-white',
+  warning: 'border-orange-600 bg-orange-500 text-white',
 };
 
 type SharedProps = {

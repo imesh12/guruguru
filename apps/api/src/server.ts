@@ -4,6 +4,7 @@ import websocket from '@fastify/websocket';
 import process from 'node:process';
 
 import './services/runtime-config.js';
+import { authRoutes } from './routes/auth.js';
 import { fieldTestRoutes } from './routes/field-tests.js';
 import { fleetRoutes } from './routes/fleet.js';
 import { gpsRoutes } from './routes/gps.js';
@@ -215,6 +216,7 @@ const buildServer = () => {
   }));
 
   app.register(healthRoutes, { prefix: '/health' });
+  app.register(authRoutes, { prefix: '/api/auth' });
   app.register(fieldTestRoutes);
   app.register(fleetRoutes, { mediamtxConfigService });
   app.register(gpsRoutes(gpsState), { prefix: '/gps' });

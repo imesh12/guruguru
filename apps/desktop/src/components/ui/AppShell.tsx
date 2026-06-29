@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 
+import { AdminAuthControl } from '../AdminAuthControl';
 import { mergeClasses, municipalFontStack, sectionGapClass, shellBaseClass } from './foundation';
 
 type AppShellProps = {
@@ -48,7 +49,10 @@ export function AppShell({
               {title ? <h1 className="text-4xl font-semibold tracking-tight text-slate-900">{title}</h1> : null}
               {description ? <p className="mt-2 max-w-4xl text-[16px] leading-7 text-slate-700">{description}</p> : null}
             </div>
-            {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+            <div className="flex flex-wrap items-center gap-3">
+              {actions}
+              <AdminAuthControl />
+            </div>
           </header>
         ) : null}
         <div className={mergeClasses(sectionGapClass, contentClassName)}>{children}</div>
