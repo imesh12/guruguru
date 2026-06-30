@@ -251,21 +251,7 @@ function createGoogleVehicleOverlay(
 
 
 function buildVehicleMeta(vehicle: VehicleMapViewModel) {
-  const parts = [`${vehicle.status} | updated ${vehicle.ageSeconds}s ago`];
-  const routerSampleAgeMs = vehicle.investigation?.routerSampleAgeMs ?? null;
-  const routerSampleAgeSec =
-    typeof routerSampleAgeMs === 'number' && Number.isFinite(routerSampleAgeMs)
-      ? routerSampleAgeMs / 1000
-      : null;
-  const gnssStale =
-    vehicle.investigation?.positionFresh === false ||
-    vehicle.investigation?.gnssStale === true;
-
-  if (routerSampleAgeSec !== null) {
-    parts.push(`${gnssStale ? 'GNSS stale' : 'GNSS age'} ${routerSampleAgeSec.toFixed(1)}s`);
-  }
-
-  return parts.join(' | ');
+  return vehicle.status;
   /*
 
   const parts = [`${vehicle.status} | ${vehicle.ageSeconds}s ago`];

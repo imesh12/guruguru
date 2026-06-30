@@ -12,7 +12,7 @@ export function MapPage() {
   const demoGpsLoopEnabled = import.meta.env.VITE_DEMO_GPS_LOOP === 'true';
   const liveFeed = useVehicleGpsFeed(!demoGpsLoopEnabled);
   const demoFeed = useDemoVehicleLocations(demoGpsLoopEnabled);
-  const { vehicles, connected, demoMode, error } = demoGpsLoopEnabled ? demoFeed : liveFeed;
+  const { vehicles, demoMode } = demoGpsLoopEnabled ? demoFeed : liveFeed;
   const { placeMarkers } = usePlaceMarkers();
 
   const getVehicleBadges = (vehicle: (typeof vehicles)[number]) => {
@@ -63,21 +63,6 @@ export function MapPage() {
       <MapPanel vehicles={vehicles} placeMarkers={placeMarkers} demoMode={demoMode} />
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <OperationPanel className="pointer-events-auto absolute left-3 top-3 flex max-w-[min(26rem,calc(100vw-1.5rem))] flex-col gap-1 p-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-700">{t('map.eyebrow')}</p>
-            {demoMode ? <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] text-amber-800">{t('common.demoMode')}</span> : null}
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.18em] ${connected ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-amber-300 bg-amber-100 text-amber-800'}`}>
-              {connected ? t('map.wsOnline') : t('map.wsReconnect')}
-            </span>
-          </div>
-          <div>
-            <h1 className="text-base font-semibold tracking-tight text-slate-950">{t('map.title')}</h1>
-            <p className="mt-0.5 text-sm leading-5 text-slate-700">{t('map.description')}</p>
-          </div>
-          {error && !demoMode ? <p className="text-sm font-medium text-rose-700">{t('common.apiUnavailable')}</p> : null}
-        </OperationPanel>
-
         <OperationPanel className="pointer-events-auto absolute bottom-3 right-3 flex max-h-[min(46vh,28rem)] w-[min(20rem,calc(100vw-1.5rem))] flex-col overflow-hidden p-0">
           <div className="px-3 py-2.5">
             <SectionHeader title={t('map.title')} actions={<span className="text-sm text-slate-500">{vehicles.length}</span>} />
