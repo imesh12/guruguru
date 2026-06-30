@@ -50,6 +50,10 @@ Additional common paths:
   - basic API and MediaMTX health check helper
 - `scripts/failover-check.sh`
   - standby readiness check helper
+- `scripts/install.sh`
+  - safe helper to prepare Ubuntu paths and copy deployment templates
+- `scripts/backup.sh`
+  - safe helper to create a local backup archive
 
 ## Installation Overview
 
@@ -64,6 +68,35 @@ Typical manual installation flow:
 7. Enable and start `kurukuru-api` and `kurukuru-mediamtx`
 8. Copy helper scripts into `/opt/kurukuru-monitor/scripts`
 9. Run health and failover checks
+10. Run backup checks and store archives securely
+
+## Script Usage
+
+Inspect scripts before running:
+
+```bash
+less deployment/scripts/install.sh
+less deployment/scripts/backup.sh
+```
+
+Install helper:
+
+```bash
+sudo bash deployment/scripts/install.sh
+```
+
+Backup helper:
+
+```bash
+sudo bash deployment/scripts/backup.sh
+```
+
+If executable bits are not preserved in Git on your platform, run:
+
+```bash
+chmod +x deployment/scripts/install.sh deployment/scripts/backup.sh
+chmod +x deployment/scripts/health-check.sh deployment/scripts/failover-check.sh
+```
 
 ## Manual Copy / Install Summary
 
@@ -76,7 +109,10 @@ sudo cp deployment/systemd/kurukuru-api.service /etc/systemd/system/
 sudo cp deployment/systemd/kurukuru-mediamtx.service /etc/systemd/system/
 sudo cp deployment/scripts/health-check.sh /opt/kurukuru-monitor/scripts/
 sudo cp deployment/scripts/failover-check.sh /opt/kurukuru-monitor/scripts/
+sudo cp deployment/scripts/install.sh /opt/kurukuru-monitor/scripts/
+sudo cp deployment/scripts/backup.sh /opt/kurukuru-monitor/scripts/
 sudo chmod +x /opt/kurukuru-monitor/scripts/health-check.sh /opt/kurukuru-monitor/scripts/failover-check.sh
+sudo chmod +x /opt/kurukuru-monitor/scripts/install.sh /opt/kurukuru-monitor/scripts/backup.sh
 ```
 
 Site enable example:
@@ -95,6 +131,8 @@ sudo systemctl restart kurukuru-api kurukuru-mediamtx nginx
 - Never commit real API tokens
 - Never commit admin passwords or hashes that are in active use
 - Never commit real map keys if repository policy does not allow them
+- Backups may contain secrets because `.env.production` is included
+- Backup archives must be stored securely
 
 Only safe placeholders should exist in version-controlled deployment templates.
 
@@ -104,3 +142,5 @@ Only safe placeholders should exist in version-controlled deployment templates.
 - Review MediaMTX port usage for the actual camera/network design
 - Review firewall rules before production rollout
 - Apply the same verified stable release to the standby server after the main server is validated
+- `install.sh` does not start services automatically
+- `backup.sh` creates local archives only and does not upload or delete anything

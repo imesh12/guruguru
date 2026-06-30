@@ -431,3 +431,28 @@ server {
 - Ubuntu 待機系サーバへの同一 stable release 展開
 - nginx / systemd の配備土台
 - 本番前の基本疎通確認
+
+## 14. Initial Install and Backup Scripts
+
+追加した初期スクリプト:
+
+- `deployment/scripts/install.sh`
+  - Ubuntu の基本ディレクトリ作成
+  - nginx / systemd / helper scripts の配置
+  - nginx 設定テスト
+  - systemd daemon-reload
+  - ただし service start は行わない
+- `deployment/scripts/backup.sh`
+  - `data`
+  - `mediamtx.yml`
+  - `.env.production`
+  - `/var/log/kurukuru-monitor`
+  を対象としたローカルバックアップ作成
+
+設計方針:
+
+- 破壊的な処理を入れない
+- `.env.production` を上書きしない
+- backup の自動削除を行わない
+- upload や外部送信を行わない
+- 本番前に内容確認しやすい小さなテンプレートに留める
