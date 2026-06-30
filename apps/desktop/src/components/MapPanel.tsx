@@ -4,7 +4,6 @@ import type mapboxgl from 'mapbox-gl';
 import { getPlaceMarkerIcon } from '../lib/place-marker-icons';
 import type { PlaceMarker, VehicleMapViewModel } from '../types';
 import followIcon from '../../resources/follow.png';
-import { TEMP_KURUKURU_ROUTES } from '../data/kurukuruRoutes';
 
 type MapPanelProps = {
   vehicles: VehicleMapViewModel[];
@@ -43,7 +42,7 @@ type CenterComparison = {
   deltaLng: number;
 };
 
-const KAWACHINAGANO: [number, number] = [135.55597509401576, 34.42844108571236];
+const DEFAULT_MAP_CENTER: [number, number] = [135.5023, 34.6937];
 const GOOGLE_MAP_ID = 'kurukuru-google-map-script';
 const MAPBOX_NORMAL_STYLE = 'mapbox://styles/mapbox/streets-v12';
 const MAPBOX_3D_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
@@ -59,51 +58,6 @@ const statusClasses: Record<VehicleMapViewModel['status'], string> = {
   DELAYED: 'text-amber-700',
   OFFLINE: 'text-rose-700',
 };
-
-
-function addTemporaryKurukuruRoutes(map: mapboxgl.Map) {
-  for (const route of TEMP_KURUKURU_ROUTES) {
-    const sourceId = `temp-kurukuru-route-${route.routeId}`;
-    const layerId = `temp-kurukuru-route-line-${route.routeId}`;
-
-    if (map.getLayer(layerId)) {
-      map.removeLayer(layerId);
-    }
-
-    if (map.getSource(sourceId)) {
-      map.removeSource(sourceId);
-    }
-
-    map.addSource(sourceId, {
-      type: 'geojson',
-      data: {
-        type: 'Feature',
-        properties: {
-          routeId: route.routeId,
-        },
-        geometry: {
-          type: 'LineString',
-          coordinates: route.points.map((point) => [point.lng, point.lat]),
-        },
-      },
-    });
-
-    map.addLayer({
-      id: layerId,
-      type: 'line',
-      source: sourceId,
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
-      },
-      paint: {
-        'line-color': route.color,
-        'line-width': 5,
-        'line-opacity': 0.9,
-      },
-    });
-  }
-}
 
 
 function getMapProvider() {
@@ -136,53 +90,6 @@ function loadGoogleMaps(apiKey: string): Promise<typeof google> {
 
     document.head.appendChild(script);
   });
-}
-
-async function addTemporaryGoogleKurukuruRoutes(
-  googleApi: typeof google,
-  map: google.maps.Map,
-): Promise<google.maps.DirectionsRenderer[]> {
-
-  const directionsService = new googleApi.maps.DirectionsService();
-
-  const renderers: google.maps.DirectionsRenderer[] = [];
-
-  for (const route of TEMP_KURUKURU_ROUTES) {
-
-    const renderer = new googleApi.maps.DirectionsRenderer({
-      suppressMarkers: true,
-      preserveViewport: true,
-      polylineOptions: {
-        strokeColor: route.color,
-        strokeOpacity: 0.9,
-        strokeWeight: 5,
-      },
-    });
-
-    renderer.setMap(map);
-
-    await directionsService.route({
-      origin: route.start,
-      destination: route.end,
-      travelMode: googleApi.maps.TravelMode.DRIVING,
-
-      waypoints: route.points.map((point) => ({
-        location: {
-          lat: point.lat,
-          lng: point.lng,
-        },
-        stopover: false,
-      })),
-
-      optimizeWaypoints: false,
-    }).then((result) => {
-      renderer.setDirections(result);
-    });
-
-    renderers.push(renderer);
-  }
-
-  return renderers;
 }
 
 function createGoogleVehicleOverlay(
@@ -446,7 +353,6 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
   const googleMarkersRef = useRef<Map<string, GoogleMapMarkerState>>(new Map());
   const googlePlaceMarkersRef = useRef<Map<string, GooglePlaceMarkerState>>(new Map());
   const googlePlaceInfoWindowRef = useRef<google.maps.InfoWindow | null>(null);
-  const googleTemporaryRoutePolylinesRef = useRef<google.maps.Polyline[]>([]);
 
   const userHasInteractedRef = useRef(false);
   const hasAutoCenteredRef = useRef(false);
@@ -799,8 +705,8 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
           }
 
           const initialCenter = getPrimaryVehicleCenter()?.google ?? {
-            lat: KAWACHINAGANO[1],
-            lng: KAWACHINAGANO[0],
+            lat: DEFAULT_MAP_CENTER[1],
+            lng: DEFAULT_MAP_CENTER[0],
           };
 
           const map = new googleApi.maps.Map(containerRef.current, {
@@ -827,11 +733,8 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
             },
           });
 
-         googleMapRef.current = map;
-         googlePlaceInfoWindowRef.current = new googleApi.maps.InfoWindow();
-
-         googleTemporaryRoutePolylinesRef.current.forEach((polyline) => polyline.setMap(null));
-         googleTemporaryRoutePolylinesRef.current = addTemporaryGoogleKurukuruRoutes(googleApi, map);
+          googleMapRef.current = map;
+          googlePlaceInfoWindowRef.current = new googleApi.maps.InfoWindow();
           hasAutoCenteredRef.current = true;
           setCameraAngleDeg(map.getHeading() ?? 0);
 
@@ -857,10 +760,7 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
         googlePlaceMarkersRef.current.clear();
         googlePlaceInfoWindowRef.current?.close();
         googlePlaceInfoWindowRef.current = null;
-        
-        googleTemporaryRoutePolylinesRef.current.forEach((polyline) => polyline.setMap(null));
-        googleTemporaryRoutePolylinesRef.current = [];
-        
+
         googleMapRef.current = null;
       };
     }
@@ -879,7 +779,7 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
 
         mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-        const initialCenter = getPrimaryVehicleCenter()?.mapbox ?? KAWACHINAGANO;
+        const initialCenter = getPrimaryVehicleCenter()?.mapbox ?? DEFAULT_MAP_CENTER;
 
         const map = new mapboxgl.Map({
           container: containerRef.current,
@@ -906,7 +806,6 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
         resizeObserver.observe(containerRef.current);
 
         map.on('load', () => {
-          addTemporaryKurukuruRoutes(map);
           handleResize();
           setCameraAngleDeg(normalizeHeading(map.getBearing()));
         });
