@@ -1,0 +1,17 @@
+[Unit]
+Description=Kurukuru Monitor API
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/kurukuru-monitor
+EnvironmentFile=/etc/kurukuru-monitor/.env.production
+ExecStart=/usr/bin/env pnpm --filter @kurukuru-monitor/api start
+Restart=always
+RestartSec=5
+User=kurukuru
+Group=kurukuru
+
+[Install]
+WantedBy=multi-user.target

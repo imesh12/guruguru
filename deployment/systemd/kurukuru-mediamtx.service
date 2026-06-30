@@ -1,0 +1,16 @@
+[Unit]
+Description=Kurukuru Monitor MediaMTX
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/kurukuru-monitor/mediamtx
+ExecStart=/opt/kurukuru-monitor/mediamtx/mediamtx /opt/kurukuru-monitor/mediamtx/mediamtx.yml
+Restart=always
+RestartSec=5
+User=kurukuru
+Group=kurukuru
+
+[Install]
+WantedBy=multi-user.target
