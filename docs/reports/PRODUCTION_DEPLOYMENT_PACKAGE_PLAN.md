@@ -456,3 +456,28 @@ server {
 - backup の自動削除を行わない
 - upload や外部送信を行わない
 - 本番前に内容確認しやすい小さなテンプレートに留める
+
+## 15. Restore Helper Script
+
+追加スクリプト:
+
+- `deployment/scripts/restore.sh`
+
+思想:
+
+- Safe by default
+- Preview first
+- Explicit confirmation
+- Manual service restart
+
+仕様:
+
+- root 権限必須
+- backup archive 指定必須
+- 実展開は `/tmp/kurukuru-restore-<timestamp>` に限定
+- 本番ディレクトリへ直接展開しない
+- archive 内容の確認結果を表示
+- `--apply` 指定時でも各 major step ごとに確認する
+- service restart は自動実行しない
+
+これにより、復旧補助はできるが、自動災害復旧ツールにはしない方針を維持する。

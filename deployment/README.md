@@ -54,6 +54,8 @@ Additional common paths:
   - safe helper to prepare Ubuntu paths and copy deployment templates
 - `scripts/backup.sh`
   - safe helper to create a local backup archive
+- `scripts/restore.sh`
+  - safe helper to preview and interactively restore a backup archive
 
 ## Installation Overview
 
@@ -91,12 +93,31 @@ Backup helper:
 sudo bash deployment/scripts/backup.sh
 ```
 
+Restore helper:
+
+```bash
+sudo bash deployment/scripts/restore.sh /path/to/kurukuru-backup-YYYYmmdd-HHMMSS.tar.gz
+sudo bash deployment/scripts/restore.sh /path/to/kurukuru-backup-YYYYmmdd-HHMMSS.tar.gz --apply
+```
+
 If executable bits are not preserved in Git on your platform, run:
 
 ```bash
-chmod +x deployment/scripts/install.sh deployment/scripts/backup.sh
+chmod +x deployment/scripts/install.sh deployment/scripts/backup.sh deployment/scripts/restore.sh
 chmod +x deployment/scripts/health-check.sh deployment/scripts/failover-check.sh
 ```
+
+## Restore Procedure
+
+Typical workflow:
+
+1. Run `backup.sh`
+2. Copy the backup archive to the target Ubuntu server
+3. Run `restore.sh` in preview mode first
+4. Verify extracted contents and restoration plan
+5. Run `restore.sh ... --apply` only if needed
+6. Verify application state
+7. Restart services manually if appropriate
 
 ## Manual Copy / Install Summary
 
@@ -111,8 +132,9 @@ sudo cp deployment/scripts/health-check.sh /opt/kurukuru-monitor/scripts/
 sudo cp deployment/scripts/failover-check.sh /opt/kurukuru-monitor/scripts/
 sudo cp deployment/scripts/install.sh /opt/kurukuru-monitor/scripts/
 sudo cp deployment/scripts/backup.sh /opt/kurukuru-monitor/scripts/
+sudo cp deployment/scripts/restore.sh /opt/kurukuru-monitor/scripts/
 sudo chmod +x /opt/kurukuru-monitor/scripts/health-check.sh /opt/kurukuru-monitor/scripts/failover-check.sh
-sudo chmod +x /opt/kurukuru-monitor/scripts/install.sh /opt/kurukuru-monitor/scripts/backup.sh
+sudo chmod +x /opt/kurukuru-monitor/scripts/install.sh /opt/kurukuru-monitor/scripts/backup.sh /opt/kurukuru-monitor/scripts/restore.sh
 ```
 
 Site enable example:
@@ -133,6 +155,7 @@ sudo systemctl restart kurukuru-api kurukuru-mediamtx nginx
 - Never commit real map keys if repository policy does not allow them
 - Backups may contain secrets because `.env.production` is included
 - Backup archives must be stored securely
+- Inspect restore scripts before running them against production data
 
 Only safe placeholders should exist in version-controlled deployment templates.
 
@@ -144,3 +167,4 @@ Only safe placeholders should exist in version-controlled deployment templates.
 - Apply the same verified stable release to the standby server after the main server is validated
 - `install.sh` does not start services automatically
 - `backup.sh` creates local archives only and does not upload or delete anything
+- `restore.sh` extracts into `/tmp` first and only writes into production with explicit confirmation
