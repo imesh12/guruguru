@@ -42,7 +42,7 @@ type CenterComparison = {
   deltaLng: number;
 };
 
-const DEFAULT_MAP_CENTER: [number, number] = [135.5023, 34.6937];
+const DEFAULT_MAP_CENTER: [number, number] = [135.55603190299396, 34.428826764162736];
 const GOOGLE_MAP_ID = 'kurukuru-google-map-script';
 const MAPBOX_NORMAL_STYLE = 'mapbox://styles/mapbox/streets-v12';
 const MAPBOX_3D_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
@@ -58,6 +58,9 @@ const statusClasses: Record<VehicleMapViewModel['status'], string> = {
   DELAYED: 'text-amber-700',
   OFFLINE: 'text-rose-700',
 };
+
+const INITIAL_MULTI_VEHICLE_PADDING_PX = 72;
+const INITIAL_VIEWPORT_FALLBACK_DELAY_MS = 1800;
 
 
 function getMapProvider() {
@@ -361,6 +364,7 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
   const interactionMuteTimerRef = useRef<number | null>(null);
   const markerSelectionMuteTimerRef = useRef<number | null>(null);
   const suppressMapClickClearRef = useRef(false);
+  const initialViewportFallbackTimerRef = useRef<number | null>(null);
 
   const mapProvider = getMapProvider();
 
@@ -393,6 +397,13 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
       suppressUserInteractionRef.current = false;
       interactionMuteTimerRef.current = null;
     }, durationMs);
+  };
+
+  const clearInitialViewportFallbackTimer = () => {
+    if (initialViewportFallbackTimerRef.current !== null) {
+      window.clearTimeout(initialViewportFallbackTimerRef.current);
+      initialViewportFallbackTimerRef.current = null;
+    }
   };
 
   const disableFollowVehicle = () => {
@@ -462,8 +473,11 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
   const getPrimaryLiveVehicle = () =>
     vehiclesRef.current.find((vehicle) => vehicle.status !== 'OFFLINE') ?? null;
 
+  const getInitialPositionVehicles = () =>
+    vehiclesRef.current.filter((vehicle) => vehicle.status === 'ONLINE' || vehicle.status === 'DELAYED');
+
   const getPrimaryVehicleCenter = () => {
-    const vehicle = getPrimaryLiveVehicle();
+    const vehicle = getInitialPositionVehicles()[0] ?? getPrimaryLiveVehicle();
     if (!vehicle) {
       return null;
     }
@@ -472,6 +486,111 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
       google: { lat: vehicle.lat, lng: vehicle.lng },
       mapbox: [vehicle.lng, vehicle.lat] as [number, number],
     };
+  };
+
+  const applyInitialGooglePosition = (map: google.maps.Map) => {
+    if (hasAutoCenteredRef.current) {
+      return false;
+    }
+
+    const vehiclesForPosition = getInitialPositionVehicles();
+
+    if (vehiclesForPosition.length === 0) {
+      return false;
+    }
+
+    muteUserInteraction();
+
+    if (vehiclesForPosition.length === 1) {
+      const vehicle = vehiclesForPosition[0];
+      if (!vehicle) {
+        return false;
+      }
+
+      map.setCenter({
+        lat: vehicle.lat,
+        lng: vehicle.lng,
+      });
+      map.setZoom(Math.max(map.getZoom() ?? 18, 18));
+      hasAutoCenteredRef.current = true;
+      return true;
+    }
+
+    const bounds = new google.maps.LatLngBounds();
+    vehiclesForPosition.forEach((vehicle) => {
+      bounds.extend({ lat: vehicle.lat, lng: vehicle.lng });
+    });
+    map.fitBounds(bounds, INITIAL_MULTI_VEHICLE_PADDING_PX);
+    hasAutoCenteredRef.current = true;
+    return true;
+  };
+
+  const applyDefaultGooglePosition = (map: google.maps.Map) => {
+    if (hasAutoCenteredRef.current) {
+      return false;
+    }
+
+    muteUserInteraction();
+    map.setCenter({
+      lat: DEFAULT_MAP_CENTER[1],
+      lng: DEFAULT_MAP_CENTER[0],
+    });
+    map.setZoom(18);
+    hasAutoCenteredRef.current = true;
+    return true;
+  };
+
+  const applyInitialMapboxPosition = (map: mapboxgl.Map) => {
+    if (hasAutoCenteredRef.current) {
+      return false;
+    }
+
+    const vehiclesForPosition = getInitialPositionVehicles();
+
+    if (vehiclesForPosition.length === 0) {
+      return false;
+    }
+
+    muteUserInteraction();
+
+    if (vehiclesForPosition.length === 1) {
+      const vehicle = vehiclesForPosition[0];
+      if (!vehicle) {
+        return false;
+      }
+
+      map.setCenter([vehicle.lng, vehicle.lat]);
+      map.setZoom(Math.max(map.getZoom(), 18));
+      hasAutoCenteredRef.current = true;
+      return true;
+    }
+
+    const lngValues = vehiclesForPosition.map((vehicle) => vehicle.lng);
+    const latValues = vehiclesForPosition.map((vehicle) => vehicle.lat);
+    const minLng = Math.min(...lngValues);
+    const maxLng = Math.max(...lngValues);
+    const minLat = Math.min(...latValues);
+    const maxLat = Math.max(...latValues);
+
+    map.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+      padding: INITIAL_MULTI_VEHICLE_PADDING_PX,
+      maxZoom: 18,
+      duration: 0,
+    });
+    hasAutoCenteredRef.current = true;
+    return true;
+  };
+
+  const applyDefaultMapboxPosition = (map: mapboxgl.Map) => {
+    if (hasAutoCenteredRef.current) {
+      return false;
+    }
+
+    muteUserInteraction();
+    map.setCenter(DEFAULT_MAP_CENTER);
+    map.setZoom(18);
+    hasAutoCenteredRef.current = true;
+    return true;
   };
 
   const getFollowVehicle = () => {
@@ -735,7 +854,7 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
 
           googleMapRef.current = map;
           googlePlaceInfoWindowRef.current = new googleApi.maps.InfoWindow();
-          hasAutoCenteredRef.current = true;
+          hasAutoCenteredRef.current = false;
           setCameraAngleDeg(map.getHeading() ?? 0);
 
           dragListener = map.addListener('dragstart', markUserDragInteraction);
@@ -796,7 +915,7 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
 
         mapboxMapRef.current = map;
         mapboxStyleModeRef.current = 'normal';
-        hasAutoCenteredRef.current = true;
+        hasAutoCenteredRef.current = false;
 
         const handleResize = () => {
           map.resize();
@@ -844,6 +963,48 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
   }, [useGoogleMap, useMapbox]);
 
   useEffect(() => {
+    if (hasAutoCenteredRef.current) {
+      clearInitialViewportFallbackTimer();
+      return;
+    }
+
+    const hasInitialPositionVehicles = getInitialPositionVehicles().length > 0;
+
+    if (useGoogleMap && googleMapRef.current) {
+      if (hasInitialPositionVehicles && applyInitialGooglePosition(googleMapRef.current)) {
+        clearInitialViewportFallbackTimer();
+        return;
+      }
+
+      if (initialViewportFallbackTimerRef.current === null) {
+        initialViewportFallbackTimerRef.current = window.setTimeout(() => {
+          if (!hasAutoCenteredRef.current && useGoogleMap && googleMapRef.current) {
+            applyDefaultGooglePosition(googleMapRef.current);
+          }
+          initialViewportFallbackTimerRef.current = null;
+        }, INITIAL_VIEWPORT_FALLBACK_DELAY_MS);
+      }
+      return;
+    }
+
+    if (useMapbox && mapboxMapRef.current) {
+      if (hasInitialPositionVehicles && applyInitialMapboxPosition(mapboxMapRef.current)) {
+        clearInitialViewportFallbackTimer();
+        return;
+      }
+
+      if (initialViewportFallbackTimerRef.current === null) {
+        initialViewportFallbackTimerRef.current = window.setTimeout(() => {
+          if (!hasAutoCenteredRef.current && useMapbox && mapboxMapRef.current) {
+            applyDefaultMapboxPosition(mapboxMapRef.current);
+          }
+          initialViewportFallbackTimerRef.current = null;
+        }, INITIAL_VIEWPORT_FALLBACK_DELAY_MS);
+      }
+    }
+  }, [useGoogleMap, useMapbox, vehicles]);
+
+  useEffect(() => {
     if (useGoogleMap) {
       applyGooglePerspective(perspectiveMode);
       return;
@@ -889,6 +1050,7 @@ export function MapPanel({ vehicles, placeMarkers, demoMode = false }: MapPanelP
       if (markerSelectionMuteTimerRef.current !== null) {
         window.clearTimeout(markerSelectionMuteTimerRef.current);
       }
+      clearInitialViewportFallbackTimer();
     };
   }, []);
 

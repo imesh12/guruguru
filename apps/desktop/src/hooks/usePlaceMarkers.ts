@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
+import { apiRequest } from '../lib/api';
 import type { PlaceMarker } from '../types';
+
+const BROWSER_PLACE_MARKER_REFRESH_MS = 5000;
 
 export function usePlaceMarkers() {
   const [placeMarkers, setPlaceMarkers] = useState<PlaceMarker[]>([]);
@@ -9,10 +12,35 @@ export function usePlaceMarkers() {
 
   useEffect(() => {
     if (!window.electronAPI?.listPlaceMarkers || !window.electronAPI?.onPlaceMarkersChanged) {
-      setPlaceMarkers([]);
-      setError(null);
-      setLoading(false);
-      return () => undefined;
+      let disposed = false;
+
+      const loadFromApi = async () => {
+        try {
+          const response = await apiRequest<{ placeMarkers: PlaceMarker[] }>('/api/place-markers');
+          if (!disposed) {
+            setPlaceMarkers(response.placeMarkers);
+            setError(null);
+          }
+        } catch (loadError) {
+          if (!disposed) {
+            setError(loadError instanceof Error ? loadError.message : '場所マーカーを読み込めませんでした。');
+          }
+        } finally {
+          if (!disposed) {
+            setLoading(false);
+          }
+        }
+      };
+
+      void loadFromApi();
+      const timer = window.setInterval(() => {
+        void loadFromApi();
+      }, BROWSER_PLACE_MARKER_REFRESH_MS);
+
+      return () => {
+        disposed = true;
+        window.clearInterval(timer);
+      };
     }
 
     let disposed = false;

@@ -395,6 +395,10 @@ const bootstrap = async () => {
     const body = await fetchJson<{ vehicles: Array<{ id: string; name: string; displayColor: string; enabled: boolean }> }>('/vehicles');
     return body.vehicles;
   };
+  const fetchPlaceMarkers = async () => {
+    const body = await fetchJson<{ placeMarkers: PlaceMarker[] }>('/api/place-markers');
+    return body.placeMarkers;
+  };
   const fetchCameras = async () => {
     const body = await fetchJson<{
       cameras: Array<{
@@ -798,7 +802,7 @@ const bootstrap = async () => {
     }
   };
 
-  const broadcastPlaceMarkers = (payload = readPlaceMarkersFromDisk()) => {
+  const broadcastPlaceMarkers = (payload: PlaceMarker[]) => {
     for (const window of BrowserWindow.getAllWindows()) {
       if (window.isDestroyed() || window.webContents.isDestroyed()) {
         continue;
@@ -881,28 +885,24 @@ const bootstrap = async () => {
     }
   });
 
-  ipcMain.handle('place-marker:list', async () => readPlaceMarkersFromDisk());
+  ipcMain.handle('place-marker:list', async () => fetchPlaceMarkers());
   ipcMain.handle('place-marker:create', async (_, payload: PlaceMarkerInput) => {
-    const normalized = normalizePlaceMarkerInput(payload);
-    const now = new Date().toISOString();
-    const placeMarkers = readPlaceMarkersFromDisk();
-    const nextMarker: PlaceMarker = {
-      id: randomUUID(),
-      title: normalized.title,
-      latitude: normalized.latitude,
-      longitude: normalized.longitude,
-      markerIconId: normalized.markerIconId,
-      description: normalized.description,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const nextPlaceMarkers = [...placeMarkers, nextMarker];
-    writePlaceMarkersToDisk(nextPlaceMarkers);
-    broadcastPlaceMarkers(nextPlaceMarkers);
-    return nextMarker;
+    const body = await fetchJson<{ placeMarker: PlaceMarker; placeMarkers: PlaceMarker[] }>('/api/place-markers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    broadcastPlaceMarkers(body.placeMarkers);
+    return body.placeMarker;
   });
   ipcMain.handle('place-marker:update', async (_, payload: PlaceMarkerInput & { id: string }) => {
+    const { id, ...input } = payload;
+    const body = await fetchJson<{ placeMarker: PlaceMarker; placeMarkers: PlaceMarker[] }>(`/api/place-markers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    });
+    broadcastPlaceMarkers(body.placeMarkers);
+    return body.placeMarker;
+
     const normalized = normalizePlaceMarkerInput(payload);
     const placeMarkers = readPlaceMarkersFromDisk();
     const index = placeMarkers.findIndex((placeMarker) => placeMarker.id === payload.id);
@@ -929,6 +929,12 @@ const bootstrap = async () => {
     return updatedMarker;
   });
   ipcMain.handle('place-marker:delete', async (_, placeMarkerId: string) => {
+    const body = await fetchJson<{ status: string; placeMarkers: PlaceMarker[] }>(`/api/place-markers/${placeMarkerId}`, {
+      method: 'DELETE',
+    });
+    broadcastPlaceMarkers(body.placeMarkers);
+    return { status: 'ok' };
+
     const placeMarkers = readPlaceMarkersFromDisk();
     const nextPlaceMarkers = placeMarkers.filter((placeMarker) => placeMarker.id !== placeMarkerId);
     if (nextPlaceMarkers.length === placeMarkers.length) {

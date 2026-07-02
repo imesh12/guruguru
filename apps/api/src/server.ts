@@ -10,6 +10,7 @@ import { fleetRoutes } from './routes/fleet.js';
 import { gpsRoutes } from './routes/gps.js';
 import { healthRoutes } from './routes/health.js';
 import { locationRoutes } from './routes/locations.js';
+import { placeMarkerRoutes } from './routes/place-markers.js';
 import { systemRoutes } from './routes/system.js';
 import { getApiHost, requireAdminToken } from './services/api-security.js';
 import { warnIfCredentialKeyMissing } from './services/camera-credentials.js';
@@ -221,6 +222,7 @@ const buildServer = () => {
   app.register(fleetRoutes, { mediamtxConfigService });
   app.register(gpsRoutes(gpsState), { prefix: '/gps' });
   app.register(locationRoutes(locationManager, locationHistoryStore, dailyRouteReportService, bridgeVehicleLocationToGpsState), { prefix: '/api' });
+  app.register(placeMarkerRoutes, { prefix: '/api' });
   app.register(systemRoutes(systemHealth), { prefix: '/system' });
   registerVehicleLocationSocket(app, gpsState);
   app.log.info({ route: '/ws/vehicles' }, '[gnss-investigation] websocket route registered');
