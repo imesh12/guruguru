@@ -406,3 +406,16 @@ rg -n "TODO|FIXME|TEMP|DEBUG|DEMO|Kawachinagano|Osaka|DEFAULT_MAP_CENTER|API_TOK
 
 - 既に露出済みの RTSP 認証情報、API token、管理者系秘密情報は必ずローテーションすること
 - 置換済みプレースホルダは「漏えい防止」であり、「過去露出の無効化」ではない
+
+## 2026-07-02 Desktop Typecheck Remediation Update
+
+- `apps/desktop/src/vite-env.d.ts` に残っていた旧 `Window.electronAPI` 型定義を整理し、実際の preload 公開 API は `apps/desktop/src/global.d.ts` を正として一本化
+- preload 実装と renderer 側の型参照先の不整合を解消
+- 検証結果:
+  - `corepack pnpm --filter @kurukuru-monitor/desktop typecheck` 成功
+  - `corepack pnpm --filter @kurukuru-monitor/api typecheck` 成功
+
+評価:
+
+- デスクトップ型エラーは、機能不具合そのものよりも型定義の二重管理が主因だった
+- v1.0 配備前の blocking issue としていた「desktop typecheck failure」は、本是正により解消済み

@@ -13,24 +13,3 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
-
-interface Window {
-  electronAPI: {
-    openVideoWall: () => Promise<void>;
-    openMap: () => Promise<void>;
-    openSystemStatus: () => Promise<void>;
-    openSettings?: () => Promise<void>;
-    openCameraWindow: (cameraId: string, title?: string) => Promise<void>;
-
-    listVehicles: () => Promise<unknown[]>;
-    listCameras: () => Promise<unknown[]>;
-    listCameraStatuses: () => Promise<unknown[]>;
-    getActiveLayout: () => Promise<unknown>;
-    getCameraPlaybackConfig: (cameraId: string) => Promise<unknown>;
-    getApiSecurityConfig?: () => Promise<unknown>;
-
-    stopSurface?: (surface: string) => Promise<void>;
-    checkMpvAvailability?: () => Promise<unknown>;
-    reportCameraStatus?: (...args: unknown[]) => Promise<void>;
-  };
-}
