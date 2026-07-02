@@ -64,13 +64,13 @@ export function useVehicleGpsFeed(enabled = true) {
     const electronApi = window.electronAPI;
 
     const loadVehicleColors = async () => {
-      if (!electronApi?.listVehicles) {
-        vehicleColorsRef.current = new Map();
-        syncState();
-        return;
+      const response = await fetch(`${resolvedApiBaseUrl}/gps/vehicles-meta`);
+      if (!response.ok) {
+        throw new Error(`Vehicle color request failed with ${response.status}`);
       }
 
-      const list = (await electronApi.listVehicles()) as VehicleAdmin[];
+      const body = (await response.json()) as { vehicles: VehicleAdmin[] };
+      const list = body.vehicles;
       if (disposed) {
         return;
       }

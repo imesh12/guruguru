@@ -22,6 +22,27 @@ const gpsUpdateSchema = z.object({
 
 export const gpsRoutes = (gpsState: GpsStateService): FastifyPluginAsync => {
   const plugin: FastifyPluginAsync = async (app) => {
+    app.get('/vehicles-meta', async () => {
+      const vehicles = await prisma.vehicle.findMany({
+        where: {
+          enabled: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+        select: {
+          id: true,
+          name: true,
+          displayColor: true,
+          enabled: true,
+        },
+      });
+
+      return {
+        vehicles,
+      };
+    });
+
     app.get('/latest', async () => {
       const responseStartedAtMs = Date.now();
       const vehicles = await prisma.vehicle.findMany({
