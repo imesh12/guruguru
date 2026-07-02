@@ -238,3 +238,20 @@ v1.0 の対象外:
 - [ ] 一時的な Kawachinagano テストルートを削除済み
 - [ ] 開発用の一時ルートポリラインを削除済み
 - [ ] 本番地図データのみを残す構成へ整理済み
+
+## 19. 2026-07-02 Security Remediation Update
+
+- [x] `mediamtx/mediamtx.yml` の追跡中 RTSP 資格情報をプレースホルダへ置換済み
+- [x] `apps/desktop/mediamtx/mediamtx.yml` の追跡中 RTSP 資格情報をプレースホルダへ置換済み
+- [x] `prisma/seed.mjs` の既定カメラ認証情報をプレースホルダへ置換済み
+- [x] `docs/mediamtx-local-setup.md` の実環境例をプレースホルダへ置換済み
+- [x] `diff.txt` を削除済み
+- [x] `blue_print.txt` を削除済み
+- [x] `route.txt` を削除済み
+- [ ] 過去に露出した秘密情報のローテーションを完了
+- [ ] デスクトップ TypeScript typecheck の既存型負債を解消
+
+補足:
+
+- `apps/desktop/src/demo/kawachinagano-demo-routes.ts` と `apps/desktop/src/hooks/useDemoVehicleLocations.ts` は、デモ専用経路として残置しています
+- 本番デフォルト動作では利用されませんが、将来不要が確定した段階で削除を推奨します

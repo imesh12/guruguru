@@ -1,17 +1,17 @@
 # MediaMTX Local Setup
 
-This Phase 2 proof-of-concept keeps the current desktop and mpv flow intact while adding a local MediaMTX sidecar that proxies three known Axis RTSP cameras into deterministic local paths.
+This Phase 2 proof-of-concept keeps the current desktop and mpv flow intact while adding a local MediaMTX sidecar that proxies Axis RTSP cameras into deterministic local paths.
 
 ## Seeded demo cameras
 
-- `camera-axis-190` -> `192.168.1.190`
-- `camera-axis-187` -> `192.168.1.187`
-- `camera-axis-175` -> `192.168.1.175`
+- `camera-axis-190` -> `<CAMERA_HOST>`
+- `camera-axis-187` -> `<CAMERA_HOST>`
+- `camera-axis-175` -> `<CAMERA_HOST>`
 
 Each camera uses the Axis pattern:
 
 ```text
-rtsp://root:Cw8839629@IP/axis-media/media.amp?videocodec=h264&resolution=1280x720
+rtsp://<RTSP_USERNAME>:<RTSP_PASSWORD>@<CAMERA_HOST>/axis-media/media.amp?videocodec=h264&resolution=1280x720
 ```
 
 In seed data, credentials are stored separately from the `rtspUrl` field so the desktop Settings UI and sanitized playback output do not expose the password.
@@ -82,5 +82,5 @@ cd C:\Users\cs_in\projects\kurukuru-monitor
 4. If a path fails, verify:
    - the camera is reachable on the LAN
    - the camera still serves H.264 over the Axis URL
-   - the local machine can connect to `192.168.1.190`, `192.168.1.187`, and `192.168.1.175`
+   - the local machine can connect to the configured `<CAMERA_HOST>` addresses
    - firewall rules allow local ports `8554`, `8888`, and `8889`
